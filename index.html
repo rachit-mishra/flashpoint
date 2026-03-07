@@ -372,7 +372,7 @@
 
     .pulse-row {
       display: grid;
-      grid-template-columns: 100px 1fr 42px;
+      grid-template-columns: 100px 1fr 54px 42px;
       align-items: center;
       gap: 14px;
     }
@@ -728,6 +728,108 @@
     }
 
     /* ── Responsive ─────────────────────────────────────────────────────── */
+    /* ── News Ticker ─────────────────────────────────────────────────────── */
+    .ticker-wrap {
+      display: none;            /* shown by JS once articles are ready */
+      align-items: center;
+      margin-bottom: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      height: 34px;
+    }
+    .ticker-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 14px;
+      height: 100%;
+      background: rgba(239,68,68,0.08);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .ticker-badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 5px #ef4444;
+      animation: blink 2.2s ease-in-out infinite;
+    }
+    .ticker-badge-text {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: #ef4444;
+      text-transform: uppercase;
+    }
+    .ticker-viewport { overflow: hidden; flex: 1; height: 100%; }
+    .ticker-track {
+      display: inline-flex;
+      align-items: center;
+      height: 100%;
+      white-space: nowrap;
+    }
+    .ticker-track.is-scrolling {
+      animation: ticker-scroll var(--ticker-dur, 60s) linear infinite;
+    }
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px;
+      font-family: var(--font-m);
+      font-size: 10px;
+      color: var(--text-2);
+    }
+    .ticker-item a { color: var(--text-2); text-decoration: none; transition: color 0.15s; }
+    .ticker-item a:hover { color: var(--text-1); }
+    .ticker-sep { color: rgba(255,255,255,0.1); }
+
+    /* ── Category Breakdown ─────────────────────────────────────────────── */
+    .row-cats { margin-bottom: 18px; }
+    .cats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 18px;
+      padding-top: 4px;
+    }
+    .cat-col { display: flex; flex-direction: column; gap: 7px; }
+    .cat-label {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+    .cat-track {
+      height: 3px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .cat-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cat-count {
+      font-family: var(--font-m);
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    /* ── Regional sparklines ─────────────────────────────────────────────── */
+    .spark-cell { flex-shrink: 0; opacity: 0.75; }
+    .spark-svg  { display: block; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
     @media (max-width: 1100px) {
       .row-hero { grid-template-columns: 220px 200px 1fr; }
     }
@@ -738,14 +840,22 @@
       .tension-num { font-size: 72px; }
     }
 
+    @media (max-width: 700px) {
+      .cats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
     @media (max-width: 600px) {
       .row-hero { grid-template-columns: 1fr; }
+      .spark-cell { display: none; }
+      .pulse-row { grid-template-columns: 100px 1fr 42px !important; }
     }
 
     @media (max-width: 520px) {
       .shell { padding: 0 16px 56px; }
       .header { flex-direction: column; align-items: flex-start; gap: 16px; }
-      .pulse-row { grid-template-columns: 80px 1fr 36px; }
+      .pulse-row { grid-template-columns: 80px 1fr 36px !important; }
+      .cats-grid { grid-template-columns: repeat(2, 1fr); }
+      .ticker-badge-text { display: none; }
     }
   </style>
 </head>
@@ -781,6 +891,17 @@
       <div class="header-ts" id="js-ts">—</div>
     </div>
   </header>
+
+  <!-- ── NEWS TICKER ──────────────────────────────────────────────────── -->
+  <div class="ticker-wrap" id="js-ticker-wrap">
+    <div class="ticker-badge">
+      <div class="ticker-badge-dot"></div>
+      <span class="ticker-badge-text">Live</span>
+    </div>
+    <div class="ticker-viewport">
+      <div class="ticker-track" id="js-ticker-track"></div>
+    </div>
+  </div>
 
   <!-- ── HERO ROW: Tension Index + Signal Brief ─────────────────────────── -->
   <div class="row-hero">
@@ -881,6 +1002,20 @@
       <div class="hist-wrap">
         <div id="js-hist-chart"></div>
         <div class="hist-tip" id="js-hist-tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CATEGORY BREAKDOWN ───────────────────────────────────────────── -->
+  <div class="row-cats">
+    <div class="card" style="padding:20px 26px;">
+      <div class="card-eyebrow" style="margin-bottom:14px;">Category Breakdown</div>
+      <div class="cats-grid" id="js-cats-grid">
+        <div class="skel" style="height:44px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:44px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:44px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:44px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:44px;border-radius:var(--r-sm);"></div>
       </div>
     </div>
   </div>
@@ -1159,6 +1294,16 @@ function renderPulse(regional) {
     score.style.color = c.hex;
     score.textContent = r.score;
 
+    /* ── Sparkline ── */
+    const safeId = r.region.replace(/[\s&]+/g, '-').toLowerCase();
+    const sparkCell = document.createElement('div');
+    sparkCell.className = 'spark-cell';
+    sparkCell.innerHTML =
+      `<svg id="spark-${safeId}" class="spark-svg" width="54" height="22" viewBox="0 0 54 22">` +
+      `<polyline id="spark-line-${safeId}" points="" fill="none"` +
+      ` stroke="rgba(255,255,255,0.12)" stroke-width="1.5"` +
+      ` stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+
     /* ── Hover tooltip ── */
     const tip = document.createElement('div');
     tip.className = 'pulse-tip';
@@ -1217,6 +1362,7 @@ function renderPulse(regional) {
 
     row.appendChild(name);
     row.appendChild(track);
+    row.appendChild(sparkCell);
     row.appendChild(score);
     row.appendChild(tip);
     list.appendChild(row);
@@ -1521,6 +1667,115 @@ function renderSignals(breakdown) {
   });
 }
 
+/* ─── News ticker ─────────────────────────────────────────────────────── */
+function renderTicker(data) {
+  const wrap  = document.getElementById('js-ticker-wrap');
+  const track = document.getElementById('js-ticker-track');
+  if (!wrap || !track) return;
+
+  // Collect articles from all regional pulses
+  const articles = [];
+  (data.regional_pulse || []).forEach(r => {
+    (r.articles || []).forEach(a => {
+      if (a.title && a.url) articles.push(a);
+    });
+  });
+  if (articles.length === 0) return;
+
+  const makeItems = () => articles.map(a =>
+    `<span class="ticker-item">` +
+    `<span style="color:#ef4444;font-size:9px;">⚡</span>` +
+    `<a href="${a.url}" target="_blank" rel="noopener noreferrer">${
+      a.title.length > 90 ? a.title.slice(0, 87) + '…' : a.title
+    }</a>` +
+    `<span class="ticker-sep">·</span>` +
+    `</span>`
+  ).join('');
+
+  track.innerHTML = makeItems() + makeItems();  // duplicate for seamless loop
+  wrap.style.display = 'flex';
+
+  requestAnimationFrame(() => {
+    const totalW = track.scrollWidth / 2;
+    const dur    = Math.max(20, totalW / 70);
+    track.style.setProperty('--ticker-dur', `${dur.toFixed(0)}s`);
+    track.classList.add('is-scrolling');
+  });
+}
+
+/* ─── Category breakdown bars ─────────────────────────────────────────── */
+const CAT_COLORS = {
+  Nuclear:   '#ef4444',
+  Conflict:  '#f59e0b',
+  Terrorism: '#dc2626',
+  Economic:  '#3b82f6',
+  Diplomacy: '#22c55e',
+};
+
+function renderCategories(breakdown) {
+  const grid = document.getElementById('js-cats-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const entries = Object.entries(breakdown);
+  const maxVal  = Math.max(...entries.map(([, v]) => v), 1);
+
+  entries.forEach(([cat, count]) => {
+    const color = CAT_COLORS[cat] || '#4b5563';
+    const pct   = (count / maxVal) * 100;
+
+    const col = document.createElement('div');
+    col.className = 'cat-col';
+    col.innerHTML =
+      `<div class="cat-label">${cat}</div>` +
+      `<div class="cat-track"><div class="cat-fill" style="background:${color};"` +
+      ` data-pct="${pct.toFixed(1)}"></div></div>` +
+      `<div class="cat-count" style="color:${color};">${count}</div>`;
+    grid.appendChild(col);
+  });
+
+  // Trigger bar animations after paint
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      grid.querySelectorAll('.cat-fill').forEach(el => {
+        el.style.width = el.dataset.pct + '%';
+      });
+    });
+  });
+}
+
+/* ─── Regional sparklines ─────────────────────────────────────────────── */
+async function fetchRegionalHistory() {
+  const regions = ['Europe', 'Middle East', 'Asia', 'Africa', 'Americas', 'Global'];
+  await Promise.all(regions.map(async region => {
+    try {
+      const res = await fetch(`/api/history/regional?region=${encodeURIComponent(region)}&limit=24`);
+      if (!res.ok) return;
+      const readings = await res.json();
+      const id   = region.replace(/[\s&]+/g, '-').toLowerCase();
+      const line = document.getElementById(`spark-line-${id}`);
+      if (!line || readings.length < 2) return;
+
+      const W = 54, H = 22, PAD = 2;
+      const scores = readings.map(r => r.score);
+      const lo     = Math.min(...scores);
+      const hi     = Math.max(...scores);
+      const range  = Math.max(hi - lo, 8);
+
+      const pts = readings.map((r, i) => {
+        const x = PAD + (i / (readings.length - 1)) * (W - PAD * 2);
+        const y = H - PAD - ((r.score - lo) / range) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      const lastLabel = readings[readings.length - 1].label || 'Stable';
+      const c = LEVEL[lastLabel] || LEVEL.Stable;
+      line.setAttribute('points', pts);
+      line.setAttribute('stroke', c.hex + 'bb');
+    } catch(_) {}
+  }));
+}
+
 /* ─── Fetch & render ──────────────────────────────────────────────────── */
 async function load() {
   try {
@@ -1533,10 +1788,13 @@ async function load() {
     renderBrief(data.brief);
     renderFlashpoints(data.flashpoints);
     renderPulse(data.regional_pulse);
+    renderTicker(data);
+    renderCategories(data.category_breakdown || {});
     renderTimestamp(data.last_updated);
 
-    // Refresh history chart on each pulse update (new reading just saved)
+    // Refresh history chart + sparklines on each pulse update
     fetchHistory();
+    fetchRegionalHistory();
 
   } catch (err) {
     console.error('Flashpoint fetch error:', err);
@@ -1551,7 +1809,8 @@ async function load() {
 }
 
 load();
-fetchHistory();   // load chart immediately without waiting for /api/pulse
+fetchHistory();           // load chart immediately without waiting for /api/pulse
+fetchRegionalHistory();   // seed sparklines on first render
 setInterval(load, 5 * 60 * 1000);
 </script>
 </body>

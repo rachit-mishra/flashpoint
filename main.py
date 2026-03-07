@@ -65,11 +65,12 @@ def init_db() -> None:
     with sqlite3.connect(DB_PATH) as c:
         c.executescript("""
             CREATE TABLE IF NOT EXISTS readings (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts           TEXT    NOT NULL,
-                score        INTEGER NOT NULL,
-                label        TEXT    NOT NULL,
-                total_events INTEGER DEFAULT 0
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts            TEXT    NOT NULL,
+                score         INTEGER NOT NULL,
+                label         TEXT    NOT NULL,
+                total_events  INTEGER DEFAULT 0,
+                regional_json TEXT    DEFAULT '{}'
             );
             CREATE TABLE IF NOT EXISTS subscriptions (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,14 +80,20 @@ def init_db() -> None:
                 created_at   TEXT    NOT NULL
             );
         """)
+        try:
+            c.execute("ALTER TABLE readings ADD COLUMN regional_json TEXT DEFAULT '{}'")
+        except Exception:
+            pass   # column already exists on existing DBs
         c.commit()
 
 
-def save_reading(score: int, label: str, total: int) -> None:
+def save_reading(score: int, label: str, total: int, regional: dict | None = None) -> None:
+    import json as _json
     with sqlite3.connect(DB_PATH) as c:
         c.execute(
-            "INSERT INTO readings (ts, score, label, total_events) VALUES (?,?,?,?)",
-            (datetime.now(timezone.utc).isoformat(), score, label, total),
+            "INSERT INTO readings (ts, score, label, total_events, regional_json) VALUES (?,?,?,?,?)",
+            (datetime.now(timezone.utc).isoformat(), score, label, total,
+             _json.dumps(regional or {})),
         )
         c.commit()
 
@@ -98,6 +105,25 @@ def get_history(limit: int = 120) -> list[dict]:
             "SELECT ts, score, label FROM readings ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
     return [{"ts": r[0], "score": r[1], "label": r[2]} for r in reversed(rows)]
+
+
+def get_regional_history(region: str, limit: int = 48) -> list[dict]:
+    """Return last `limit` per-region readings oldest-first."""
+    import json as _json
+    with sqlite3.connect(DB_PATH) as c:
+        rows = c.execute(
+            "SELECT ts, regional_json FROM readings ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+    result = []
+    for ts, rj in reversed(rows):
+        try:
+            d = _json.loads(rj or '{}')
+            score = d.get(region)
+            if score is not None:
+                result.append({"ts": ts, "score": int(score)})
+        except Exception:
+            pass
+    return result
 
 
 def get_subscriptions() -> list[dict]:
@@ -348,6 +374,16 @@ def compute_sentiment_breakdown(articles: list[dict]) -> dict:
     return counts
 
 
+def compute_category_breakdown(articles: list[dict]) -> dict:
+    pool = [a for a in articles if _is_analyzed(a)]
+    counts = {"Nuclear": 0, "Conflict": 0, "Terrorism": 0, "Economic": 0, "Diplomacy": 0}
+    for a in pool:
+        cat = a.get("category", "")
+        if cat in counts:
+            counts[cat] += 1
+    return counts
+
+
 # ── Data refresh ────────────────────────────────────────────────────────────────
 
 async def refresh_data() -> dict:
@@ -379,10 +415,12 @@ async def refresh_data() -> dict:
         prose = [p for p in paragraphs if "." in p]
         brief = prose[0] if prose else (paragraphs[0] if paragraphs else clean.strip()[:600])
 
-    flashpoints = compute_flashpoints(enriched)
+    flashpoints        = compute_flashpoints(enriched)
+    regional_pulse_data = compute_regional_pulse(enriched)
+    regional_scores    = {r["region"]: r["score"] for r in regional_pulse_data}
 
     # Persist reading and check alerts (non-blocking — fire and forget)
-    loop.run_in_executor(None, save_reading, tension_idx, tension_label, len(enriched))
+    loop.run_in_executor(None, save_reading, tension_idx, tension_label, len(enriched), regional_scores)
     loop.run_in_executor(None, check_and_send_alerts, tension_idx, tension_label, brief, flashpoints)
 
     return {
@@ -390,8 +428,9 @@ async def refresh_data() -> dict:
         "tension_label":       tension_label,
         "tension_trend":       trend,
         "flashpoints":         flashpoints,
-        "regional_pulse":      compute_regional_pulse(enriched),
+        "regional_pulse":      regional_pulse_data,
         "sentiment_breakdown": compute_sentiment_breakdown(enriched),
+        "category_breakdown":  compute_category_breakdown(enriched),
         "brief":               brief,
         "last_updated":        datetime.now(timezone.utc).isoformat(),
         "total_events":        len(enriched),
@@ -443,6 +482,13 @@ async def get_pulse():
 async def get_history_endpoint(limit: int = 120):
     loop = asyncio.get_event_loop()
     readings = await loop.run_in_executor(None, get_history, min(limit, 500))
+    return JSONResponse(content=readings)
+
+
+@app.get("/api/history/regional")
+async def get_regional_history_endpoint(region: str = "Middle East", limit: int = 48):
+    loop = asyncio.get_event_loop()
+    readings = await loop.run_in_executor(None, get_regional_history, region, min(limit, 200))
     return JSONResponse(content=readings)
 
 
