@@ -222,7 +222,7 @@ font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:32px 16px;">
 
   <div style="text-align:center;padding:16px 0;font-size:10px;color:#4b5563;">
     FLASHPOINT · Global Intelligence Monitor<br>
-    <a href="http://localhost:8000/api/alerts/unsubscribe?email={token}"
+    <a href="{os.getenv('APP_BASE_URL', 'http://localhost:8000')}/api/alerts/unsubscribe?email={token}"
        style="color:#3b82f6;">Unsubscribe</a>
   </div>
 </div></body></html>"""
