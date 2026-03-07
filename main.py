@@ -279,7 +279,13 @@ def _weighted_score(a: dict) -> float:
 
 
 def _to_100(avg: float) -> int:
-    return max(0, min(100, round((avg / MAX_RAW) * 100)))
+    # Linear scaling against the theoretical MAX_RAW (5 × Nuclear × Escalating = 13.0)
+    # compresses real-world data into a narrow 30-60 band.  A mild power curve
+    # (exponent < 1) redistributes the range so "genuinely heated" conditions
+    # register in the 65-80 zone while still anchoring 0=0 and max=100.
+    raw_pct = avg / MAX_RAW          # 0.0 → 1.0
+    curved  = raw_pct ** 0.55        # concave up: amplifies mid-range values
+    return max(0, min(100, round(curved * 100)))
 
 
 def _label(score: int) -> str:

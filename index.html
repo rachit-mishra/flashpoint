@@ -857,6 +857,103 @@
       .cats-grid { grid-template-columns: repeat(2, 1fr); }
       .ticker-badge-text { display: none; }
     }
+
+    /* ── World Map ──────────────────────────────────────────────────────── */
+    .row-map { margin-bottom: 18px; }
+    .map-card { padding: 20px 26px 18px; }
+
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 390px;
+      background: #05080f;
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+    .map-container:active { cursor: grabbing; }
+    .map-container svg    { display: block; position: relative; z-index: 1; }
+
+    .map-zoom-btns {
+      position: absolute;
+      top: 12px; right: 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      z-index: 6;
+    }
+    .map-zoom-btn {
+      width: 28px; height: 28px;
+      background: rgba(8,12,20,0.88);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 6px;
+      color: var(--text-2);
+      font-size: 15px; line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      font-family: var(--font-m);
+      user-select: none;
+    }
+    .map-zoom-btn:hover {
+      border-color: rgba(255,255,255,0.26);
+      color: var(--text-1);
+      background: rgba(13,18,32,0.95);
+    }
+
+    .map-legend {
+      display: flex; gap: 18px; flex-wrap: wrap;
+      margin-top: 12px; align-items: center;
+    }
+    .map-legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-family: var(--font-m);
+      font-size: 9px; color: var(--text-3);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .map-legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%; flex-shrink: 0;
+    }
+
+    .map-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(8,12,20,0.94);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-width: 130px;
+      opacity: 0;
+      transition: opacity 0.12s;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+    }
+    .map-tooltip.visible { opacity: 1; }
+
+    .map-loading {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+      font-family: var(--font-m);
+      font-size: 10px; letter-spacing: 0.12em;
+      background: #05080f;
+      z-index: 2;
+    }
+
+    @keyframes fp-pulse {
+      0%   { transform: scale(1);   opacity: 0.85; }
+      70%  { transform: scale(2.8); opacity: 0; }
+      100% { transform: scale(2.8); opacity: 0; }
+    }
+    .fp-pulse-ring {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: fp-pulse 2s ease-out infinite;
+    }
+
+    @media (max-width: 600px) {
+      .map-container { height: 260px; }
+    }
   </style>
 </head>
 
@@ -910,6 +1007,7 @@
     <div class="card tension-card">
       <div class="tension-glow" id="js-glow"></div>
       <div class="card-eyebrow">Tension Index</div>
+      <div style="font-size:11px;color:var(--text-3);letter-spacing:0.01em;margin-top:4px;margin-bottom:2px;">Composite 0–100 score weighted by event severity, category risk, and sentiment trajectory</div>
 
       <div class="tension-body">
         <!-- skeleton -->
@@ -1065,6 +1163,44 @@
     </div>
   </div>
 
+  <!-- ── WORLD MAP ───────────────────────────────────────────────────── -->
+  <div class="row-map">
+    <div class="card map-card">
+      <div class="card-eyebrow" style="margin-bottom:2px;">
+        Threat Map
+        <span style="color:var(--text-3);font-size:9px;font-weight:normal;margin-left:6px;">— hover to inspect · scroll to zoom · drag to pan</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:14px;">Regional tension overlaid on a live world map — pulsing markers indicate active flashpoints</div>
+
+      <div class="map-container" id="js-map-container">
+        <div class="map-loading" id="js-map-loading">LOADING MAP DATA…</div>
+        <div class="map-tooltip" id="js-map-tip"></div>
+        <div class="map-zoom-btns">
+          <button class="map-zoom-btn" id="js-map-zoomin"  title="Zoom in">+</button>
+          <button class="map-zoom-btn" id="js-map-zoomout" title="Zoom out">−</button>
+          <button class="map-zoom-btn" id="js-map-reset"   title="Reset view" style="font-size:11px;">⊙</button>
+        </div>
+      </div>
+
+      <div class="map-legend">
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#22c55e;"></div>Stable</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#3b82f6;"></div>Elevated</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#f59e0b;"></div>High</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#ef4444;"></div>Severe</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#dc2626;"></div>Critical</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#111c2b;"></div>No data</div>
+        <div class="map-legend-item" style="margin-left:auto;">
+          <svg width="14" height="14" viewBox="0 0 14 14" style="overflow:visible;">
+            <circle cx="7" cy="7" r="4.5" fill="#ef4444" opacity="0.9"/>
+            <circle cx="7" cy="7" r="4.5" fill="none" stroke="#ef4444" stroke-width="1.5"
+              class="fp-pulse-ring" style="animation-delay:0.3s;"/>
+          </svg>
+          Active Flashpoint
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── ALERT SUBSCRIPTION ────────────────────────────────────────────── -->
   <div class="row-alert">
     <div class="card alert-card">
@@ -1106,6 +1242,10 @@
   </footer>
 
 </div><!-- /.shell -->
+
+<!-- ── THIRD-PARTY LIBS ───────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 
 <!-- ── JAVASCRIPT ──────────────────────────────────────────────────────────── -->
 <script>
@@ -1776,6 +1916,246 @@ async function fetchRegionalHistory() {
   }));
 }
 
+/* ─── World Map ──────────────────────────────────────────────────────────── */
+
+// ISO 3166-1 numeric → API region display name
+const COUNTRY_REGION = (() => {
+  const m = {};
+  // Americas
+  [32,44,68,76,84,124,152,170,188,192,214,218,222,308,320,328,332,340,
+   388,484,558,591,600,604,630,659,662,670,740,780,840,858,862
+  ].forEach(id => m[id] = 'Americas');
+  // Europe (includes Russia 643)
+  [8,20,40,56,70,100,112,191,196,203,208,233,246,250,276,300,348,352,
+   372,380,428,438,440,442,470,492,498,499,528,578,616,620,642,643,
+   688,703,705,724,752,756,804,807,826
+  ].forEach(id => m[id] = 'Europe');
+  // Middle East
+  [31,48,51,268,364,368,376,400,414,422,512,634,682,760,784,792,887
+  ].forEach(id => m[id] = 'Middle East');
+  // Asia  (display name for "Asia Pacific")
+  [4,36,50,64,96,104,116,144,156,344,356,360,392,398,408,410,417,418,
+   458,496,524,554,586,598,608,626,702,704,762,764,795,860
+  ].forEach(id => m[id] = 'Asia');
+  // Africa
+  [12,24,72,108,120,132,140,148,174,178,180,204,226,231,232,262,266,
+   270,288,324,384,404,426,430,434,450,454,466,478,480,504,508,516,
+   562,566,646,678,686,694,706,710,716,728,729,748,768,788,800,818,834,854,894
+  ].forEach(id => m[id] = 'Africa');
+  return m;
+})();
+
+// Representative [lng, lat] for flashpoint marker placement
+const REGION_CENTERS = {
+  'Middle East': [ 44.0, 32.0],   // Iraq/Syria belt
+  'Europe':      [ 28.0, 49.5],   // Eastern Europe / Ukraine
+  'Asia':        [105.0, 22.0],   // South China Sea / SE Asia
+  'Africa':      [ 22.0,  3.0],   // Central Africa
+  'Americas':    [-68.0,  4.0],   // N. South America
+  'Global':      [ 50.0, 55.0],   // Catch-all (Russia area)
+};
+
+let _worldTopo = null; // topology cached after first fetch
+
+function _mapColor(score) {
+  if (score > 85) return '#dc2626';
+  if (score > 70) return '#ef4444';
+  if (score > 50) return '#f59e0b';
+  if (score > 30) return '#3b82f6';
+  if (score > 0)  return '#22c55e';
+  return '#111c2b';
+}
+
+async function renderMap(pulseData) {
+  if (typeof d3 === 'undefined' || typeof topojson === 'undefined') return;
+
+  const container = document.getElementById('js-map-container');
+  if (!container) return;
+
+  // Build region score / label lookups
+  const regionScore = {}, regionLabel = {};
+  (pulseData.regional_pulse || []).forEach(r => {
+    regionScore[r.region] = r.score;
+    regionLabel[r.region] = r.label;
+  });
+
+  // Fetch topology once, cache globally
+  if (!_worldTopo) {
+    try {
+      _worldTopo = await d3.json(
+        'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+      );
+    } catch (e) {
+      console.error('[Map] Topology fetch failed', e);
+      const loadEl = document.getElementById('js-map-loading');
+      if (loadEl) loadEl.textContent = 'Map unavailable';
+      return;
+    }
+  }
+
+  // Hide loading overlay
+  const loadEl = document.getElementById('js-map-loading');
+  if (loadEl) loadEl.style.display = 'none';
+
+  // Dimensions
+  const W = container.offsetWidth || 900;
+  const H = 390;
+
+  // Remove previous SVG on re-renders
+  container.querySelectorAll('svg').forEach(s => s.remove());
+
+  const svg = d3.select(container).insert('svg', '.map-tooltip')
+    .attr('width', W).attr('height', H)
+    .style('position', 'relative').style('z-index', '1');
+
+  const projection = d3.geoNaturalEarth1()
+    .scale(W / 6.3)
+    .translate([W / 2, H / 2 + 12]);
+
+  const pathGen = d3.geoPath().projection(projection);
+  const g = svg.append('g');
+
+  // Ocean sphere
+  g.append('path').datum({type: 'Sphere'})
+    .attr('d', pathGen)
+    .attr('fill', '#060e1a');
+
+  // Faint graticule grid
+  const graticule = d3.geoGraticule().step([30, 30])();
+  g.append('path').datum(graticule)
+    .attr('d', pathGen)
+    .attr('fill', 'none')
+    .attr('stroke', 'rgba(255,255,255,0.025)')
+    .attr('stroke-width', 0.5);
+
+  const countries = topojson.feature(_worldTopo, _worldTopo.objects.countries);
+  const borders   = topojson.mesh(_worldTopo,    _worldTopo.objects.countries, (a, b) => a !== b);
+
+  const tip = document.getElementById('js-map-tip');
+
+  // Country fills + hover
+  g.selectAll('.ctry')
+    .data(countries.features)
+    .join('path')
+    .attr('class', 'ctry')
+    .attr('d', pathGen)
+    .attr('fill', d => {
+      const region = COUNTRY_REGION[+d.id];
+      return region ? _mapColor(regionScore[region] ?? 0) : '#0e1824';
+    })
+    .attr('stroke', '#060e1a')
+    .attr('stroke-width', 0.35)
+    .style('cursor', d => COUNTRY_REGION[+d.id] ? 'crosshair' : 'default')
+    .style('transition', 'filter 0.14s')
+    .on('mousemove', function(event, d) {
+      const region = COUNTRY_REGION[+d.id];
+      if (!region || !tip) return;
+      const score = regionScore[region] ?? 0;
+      const label = regionLabel[region]  ?? '—';
+      const color = _mapColor(score);
+      tip.innerHTML =
+        `<div style="font-family:var(--font-m);font-size:9px;letter-spacing:0.12em;` +
+        `color:var(--text-3);text-transform:uppercase;margin-bottom:5px;">${region}</div>` +
+        `<div style="display:flex;align-items:baseline;gap:8px;">` +
+        `<span style="font-family:var(--font-d);font-size:28px;font-weight:700;` +
+        `color:${color};line-height:1;">${score}</span>` +
+        `<span style="font-family:var(--font-m);font-size:9px;color:${color};` +
+        `background:${color}1a;border:1px solid ${color}33;padding:2px 8px;` +
+        `border-radius:999px;letter-spacing:0.08em;">${label.toUpperCase()}</span>` +
+        `</div>`;
+      tip.classList.add('visible');
+      const rect = container.getBoundingClientRect();
+      let tx = event.clientX - rect.left + 16;
+      let ty = event.clientY - rect.top  + 16;
+      if (tx + 175 > W) tx = event.clientX - rect.left - 175;
+      if (ty + 85  > H) ty = event.clientY - rect.top  -  85;
+      tip.style.left = tx + 'px';
+      tip.style.top  = ty + 'px';
+      d3.select(this).style('filter', 'brightness(1.4)');
+    })
+    .on('mouseleave', function() {
+      if (tip) tip.classList.remove('visible');
+      d3.select(this).style('filter', null);
+    });
+
+  // Country borders on top
+  g.append('path').datum(borders)
+    .attr('d', pathGen)
+    .attr('fill', 'none')
+    .attr('stroke', 'rgba(0,0,0,0.5)')
+    .attr('stroke-width', 0.3);
+
+  // Flashpoint markers
+  const fpItems = (pulseData.flashpoints || []).filter(fp => fp.severity >= 3);
+  const fpG = g.append('g');
+
+  fpItems.forEach(fp => {
+    const coords = REGION_CENTERS[fp.region];
+    if (!coords) return;
+    const proj = projection(coords);
+    if (!proj) return;
+    const [px, py] = proj;
+    const isHot    = fp.severity >= 4 || fp.sentiment === 'Escalating';
+    const dotClr   = fp.sentiment === 'Escalating' ? '#ef4444'
+                   : fp.severity  >= 4             ? '#f59e0b' : '#fbbf24';
+    const delay    = (Math.random() * 1.4).toFixed(2);
+
+    if (isHot) {
+      fpG.append('circle')
+        .attr('cx', px).attr('cy', py).attr('r', 5)
+        .attr('fill', 'none')
+        .attr('stroke', dotClr)
+        .attr('stroke-width', 1.5)
+        .attr('class', 'fp-pulse-ring')
+        .style('animation-delay', delay + 's');
+    }
+
+    // Solid core dot
+    fpG.append('circle')
+      .attr('cx', px).attr('cy', py).attr('r', isHot ? 4 : 3)
+      .attr('fill', dotClr)
+      .attr('stroke', 'rgba(0,0,0,0.45)')
+      .attr('stroke-width', 0.8)
+      .style('filter', `drop-shadow(0 0 ${isHot ? 5 : 3}px ${dotClr}cc)`)
+      .style('cursor', 'pointer')
+      .on('mousemove', function(event) {
+        if (!tip) return;
+        const sev = '●'.repeat(fp.severity) + '○'.repeat(5 - fp.severity);
+        tip.innerHTML =
+          `<div style="font-family:var(--font-m);font-size:9px;letter-spacing:0.1em;` +
+          `color:${dotClr};text-transform:uppercase;margin-bottom:4px;">` +
+          `${fp.region} · ${fp.category}</div>` +
+          `<div style="font-size:11px;color:var(--text-1);max-width:220px;line-height:1.5;` +
+          `margin-bottom:5px;">${(fp.insight || '').slice(0, 110)}…</div>` +
+          `<div style="font-family:var(--font-m);font-size:10px;color:${dotClr};` +
+          `letter-spacing:0.04em;">${sev} · sev ${fp.severity}</div>`;
+        tip.classList.add('visible');
+        const rect = container.getBoundingClientRect();
+        let tx = event.clientX - rect.left + 16;
+        let ty = event.clientY - rect.top  - 20;
+        if (tx + 255 > W) tx = event.clientX - rect.left - 255;
+        if (ty < 10)       ty = event.clientY - rect.top  + 16;
+        tip.style.left = tx + 'px';
+        tip.style.top  = ty + 'px';
+      })
+      .on('mouseleave', function() { if (tip) tip.classList.remove('visible'); });
+  });
+
+  // Zoom / pan
+  const zoom = d3.zoom()
+    .scaleExtent([0.85, 8])
+    .on('zoom', e => g.attr('transform', e.transform));
+
+  svg.call(zoom).on('dblclick.zoom', null);
+
+  const zIn    = document.getElementById('js-map-zoomin');
+  const zOut   = document.getElementById('js-map-zoomout');
+  const zReset = document.getElementById('js-map-reset');
+  if (zIn)    zIn.onclick    = () => svg.transition().duration(320).call(zoom.scaleBy, 1.6);
+  if (zOut)   zOut.onclick   = () => svg.transition().duration(320).call(zoom.scaleBy, 0.625);
+  if (zReset) zReset.onclick = () => svg.transition().duration(380).call(zoom.transform, d3.zoomIdentity);
+}
+
 /* ─── Fetch & render ──────────────────────────────────────────────────── */
 async function load() {
   try {
@@ -1791,6 +2171,7 @@ async function load() {
     renderTicker(data);
     renderCategories(data.category_breakdown || {});
     renderTimestamp(data.last_updated);
+    renderMap(data);
 
     // Refresh history chart + sparklines on each pulse update
     fetchHistory();
