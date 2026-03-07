@@ -1092,7 +1092,13 @@
 
     <!-- SIGNAL BRIEF -->
     <div class="card brief-card">
-      <div class="card-eyebrow">Signal Brief</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+        <div class="card-eyebrow">Signal Brief</div>
+        <div id="js-brief-ts" style="font-family:var(--font-m);font-size:9px;
+          color:var(--text-3);letter-spacing:0.08em;display:none;">
+          Updated <span id="js-brief-age"></span>
+        </div>
+      </div>
 
       <!-- skeleton -->
       <div id="js-b-skel">
@@ -1103,7 +1109,8 @@
         <div class="skel" style="height:13px;width:76%;"></div>
       </div>
 
-      <div class="brief-text" id="js-brief" style="display:none"></div>
+      <div class="brief-text" id="js-brief" style="display:none;opacity:0;
+        transition:opacity 0.6s ease;"></div>
 
       <div id="js-b-err" style="display:none;font-family:var(--font-m);font-size:11px;
            color:#f87171;padding:12px;background:rgba(239,68,68,0.07);
@@ -1364,12 +1371,43 @@ function renderTension(d) {
     `${d.total_events} events`;
 }
 
+let _lastBriefText = null;
+let _lastBriefTime = null;
+
 function renderBrief(brief) {
   document.getElementById('js-b-skel').style.display = 'none';
   if (brief && brief.length > 15) {
-    const el = document.getElementById('js-brief');
-    el.style.display = 'block';
-    el.textContent   = brief;
+    const el  = document.getElementById('js-brief');
+    const ts  = document.getElementById('js-brief-ts');
+    const age = document.getElementById('js-brief-age');
+
+    // Fade out → swap content → fade in only when text actually changed
+    const changed = brief !== _lastBriefText;
+    if (changed) {
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.textContent  = brief;
+        el.style.display = 'block';
+        el.style.opacity = '1';
+      }, changed && _lastBriefText ? 400 : 0);
+      _lastBriefText = brief;
+      _lastBriefTime = Date.now();
+    } else {
+      el.style.display = 'block';
+      el.style.opacity = '1';
+    }
+
+    // Show timestamp and tick it live
+    if (_lastBriefTime) {
+      ts.style.display = 'block';
+      const tick = () => {
+        const mins = Math.floor((Date.now() - _lastBriefTime) / 60000);
+        age.textContent = mins < 1 ? 'just now' : `${mins}m ago`;
+      };
+      tick();
+      clearInterval(window._briefAgeTick);
+      window._briefAgeTick = setInterval(tick, 30000);
+    }
   } else {
     document.getElementById('js-b-err').style.display = 'block';
   }
@@ -2212,25 +2250,38 @@ async function renderMap(pulseData) {
       .style('cursor', 'pointer')
       .on('mousemove', function(event) {
         if (!tip) return;
-        const sev = '●'.repeat(fp.severity) + '○'.repeat(5 - fp.severity);
+        const sev     = '●'.repeat(fp.severity) + '○'.repeat(5 - fp.severity);
+        const actors  = (fp.actors || []).join(' · ') || 'Unknown';
+        const hasUrl  = fp.url && fp.url !== '#';
         tip.innerHTML =
           `<div style="font-family:var(--font-m);font-size:9px;letter-spacing:0.1em;` +
-          `color:${dotClr};text-transform:uppercase;margin-bottom:4px;">` +
+          `color:${dotClr};text-transform:uppercase;margin-bottom:6px;">` +
           `${fp.region} · ${fp.category}</div>` +
-          `<div style="font-size:11px;color:var(--text-1);max-width:220px;line-height:1.5;` +
-          `margin-bottom:5px;">${(fp.insight || '').slice(0, 110)}…</div>` +
-          `<div style="font-family:var(--font-m);font-size:10px;color:${dotClr};` +
-          `letter-spacing:0.04em;">${sev} · sev ${fp.severity}</div>`;
+          `<div style="font-size:11px;color:var(--text-1);max-width:240px;line-height:1.6;` +
+          `margin-bottom:6px;">${(fp.insight || '').slice(0, 120)}</div>` +
+          `<div style="font-family:var(--font-m);font-size:10px;color:var(--text-3);` +
+          `margin-bottom:6px;">${actors}</div>` +
+          `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">` +
+          `<span style="font-family:var(--font-m);font-size:10px;color:${dotClr};` +
+          `letter-spacing:0.04em;">${sev}</span>` +
+          (hasUrl
+            ? `<span style="font-family:var(--font-m);font-size:9px;color:#3b82f6;` +
+              `letter-spacing:0.06em;text-transform:uppercase;">Click to read →</span>`
+            : '') +
+          `</div>`;
         tip.classList.add('visible');
         const rect = container.getBoundingClientRect();
         let tx = event.clientX - rect.left + 16;
         let ty = event.clientY - rect.top  - 20;
-        if (tx + 255 > W) tx = event.clientX - rect.left - 255;
+        if (tx + 265 > W) tx = event.clientX - rect.left - 265;
         if (ty < 10)       ty = event.clientY - rect.top  + 16;
         tip.style.left = tx + 'px';
         tip.style.top  = ty + 'px';
       })
-      .on('mouseleave', function() { if (tip) tip.classList.remove('visible'); });
+      .on('mouseleave', function() { if (tip) tip.classList.remove('visible'); })
+      .on('click', function() {
+        if (fp.url && fp.url !== '#') window.open(fp.url, '_blank', 'noopener,noreferrer');
+      });
   });
 
   // Zoom / pan

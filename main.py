@@ -270,6 +270,147 @@ def check_and_send_alerts(score: int, label: str, brief: str, flashpoints: list[
             mark_alerted(sub["id"])
 
 
+# ── Daily digest ────────────────────────────────────────────────────────────────
+
+def _build_digest_html(score: int, label: str, brief: str,
+                       flashpoints: list[dict], regional: list[dict],
+                       date_str: str) -> str:
+    color = LEVEL_COLORS.get(label, "#3b82f6")
+    fp_rows = "".join(
+        f"""<tr>
+              <td style="padding:10px 0;border-bottom:1px solid #1e2a3a;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <span style="color:{LEVEL_COLORS.get('Severe','#ef4444')};
+                    font-weight:700;font-size:13px;">{fp['region']}</span>
+                  <span style="background:{LEVEL_COLORS.get(fp.get('sentiment','Neutral'),'#4b5563')}22;
+                    color:{LEVEL_COLORS.get(fp.get('sentiment','Neutral'),'#4b5563')};
+                    border:1px solid {LEVEL_COLORS.get(fp.get('sentiment','Neutral'),'#4b5563')}44;
+                    border-radius:999px;padding:2px 8px;font-size:10px;
+                    letter-spacing:0.1em;">{fp.get('sentiment','').upper()}</span>
+                </div>
+                <div style="color:#8b95a8;font-size:12px;line-height:1.6;">
+                  {fp.get('insight','')}
+                </div>
+                {'<a href="' + fp.get("url","#") + '" style="color:#3b82f6;font-size:11px;text-decoration:none;">→ Read source</a>' if fp.get("url","#") != "#" else ""}
+              </td>
+            </tr>"""
+        for fp in flashpoints[:5]
+    )
+    reg_rows = "".join(
+        f"""<tr>
+              <td style="padding:6px 0;border-bottom:1px solid #1e2a3a;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="color:#eef2ff;font-size:13px;">{r['region']}</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:80px;height:4px;background:#1e2a3a;border-radius:2px;">
+                      <div style="width:{r['score']}%;height:100%;background:{LEVEL_COLORS.get(r['label'],'#3b82f6')};border-radius:2px;"></div>
+                    </div>
+                    <span style="color:{LEVEL_COLORS.get(r['label'],'#3b82f6')};
+                      font-weight:700;font-size:13px;width:28px;text-align:right;">{r['score']}</span>
+                  </div>
+                </div>
+              </td>
+            </tr>"""
+        for r in regional[:6]
+    )
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    return f"""<!DOCTYPE html><html><body style="background:#080c14;color:#eef2ff;
+font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:32px 16px;">
+<div style="max-width:560px;margin:0 auto;">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+    <div style="width:38px;height:38px;background:linear-gradient(135deg,#ef4444,#b91c1c);
+      border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;">⚡</div>
+    <div>
+      <div style="font-size:17px;font-weight:700;letter-spacing:0.12em;">FLASHPOINT</div>
+      <div style="font-size:9px;color:#4b5563;letter-spacing:0.22em;text-transform:uppercase;">
+        Daily Intelligence Digest · {date_str}</div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:linear-gradient(90deg,#ef4444,transparent);
+    margin-bottom:28px;"></div>
+
+  <div style="background:#0d1220;border:1px solid {color}33;border-radius:12px;
+    padding:24px;margin-bottom:16px;display:flex;align-items:center;gap:24px;">
+    <div>
+      <div style="font-size:9px;color:#4b5563;letter-spacing:0.22em;
+        text-transform:uppercase;margin-bottom:6px;">Global Tension</div>
+      <div style="font-size:64px;font-weight:700;color:{color};line-height:1;
+        letter-spacing:-0.03em;">{score}</div>
+      <div style="display:inline-block;background:{color}22;color:{color};
+        border:1px solid {color}44;border-radius:999px;padding:3px 12px;
+        font-size:11px;letter-spacing:0.14em;font-weight:700;margin-top:8px;">
+        {label.upper()}</div>
+    </div>
+  </div>
+
+  <div style="background:#0d1220;border:1px solid rgba(255,255,255,0.06);
+    border-radius:12px;padding:20px;margin-bottom:16px;">
+    <div style="font-size:9px;color:#4b5563;letter-spacing:0.22em;
+      text-transform:uppercase;margin-bottom:10px;">Today's Signal Brief</div>
+    <p style="font-size:13px;line-height:1.85;color:#8b95a8;margin:0;">{brief}</p>
+  </div>
+
+  {'<div style="background:#0d1220;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:16px;"><div style="font-size:9px;color:#4b5563;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:12px;">Active Flashpoints</div><table style="width:100%;border-collapse:collapse;">' + fp_rows + '</table></div>' if fp_rows else ''}
+
+  {'<div style="background:#0d1220;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:16px;"><div style="font-size:9px;color:#4b5563;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:12px;">Regional Pulse</div><table style="width:100%;border-collapse:collapse;">' + reg_rows + '</table></div>' if reg_rows else ''}
+
+  <div style="text-align:center;padding:20px 0 8px;">
+    <a href="{base_url}" style="display:inline-block;background:#ef4444;color:#fff;
+      text-decoration:none;padding:10px 28px;border-radius:8px;font-size:13px;
+      font-weight:600;letter-spacing:0.06em;">VIEW LIVE DASHBOARD →</a>
+  </div>
+
+  <div style="text-align:center;padding:16px 0;font-size:10px;color:#4b5563;">
+    FLASHPOINT · Global Intelligence Monitor<br>
+    You're receiving this because you subscribed to daily digests.<br>
+    <a href="{base_url}/api/alerts/unsubscribe?email={{token}}"
+       style="color:#3b82f6;">Unsubscribe</a>
+  </div>
+</div></body></html>"""
+
+
+def send_daily_digest(score: int, label: str, brief: str,
+                      flashpoints: list[dict], regional: list[dict]) -> None:
+    """Send the daily digest to all subscribers."""
+    api_key = os.getenv("RESEND_API_KEY", "")
+    if not api_key:
+        print("[Flashpoint] Daily digest skipped (no RESEND_API_KEY)")
+        return
+    from_addr = os.getenv("ALERT_FROM_EMAIL", "FLASHPOINT <alerts@flashpoint.watch>")
+    date_str  = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    subs      = get_subscriptions()
+    if not subs:
+        print("[Flashpoint] Daily digest: no subscribers")
+        return
+    import base64
+    sent = 0
+    for sub in subs:
+        import base64 as _b64
+        token = _b64.urlsafe_b64encode(sub["email"].encode()).decode()
+        html  = _build_digest_html(score, label, brief, flashpoints, regional, date_str)
+        html  = html.replace("{token}", token)
+        try:
+            resp = http_req.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}",
+                         "Content-Type": "application/json"},
+                json={
+                    "from":    from_addr,
+                    "to":      sub["email"],
+                    "subject": f"⚡ FLASHPOINT Daily Digest · {date_str} · Tension {score}/100",
+                    "html":    html,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            sent += 1
+        except Exception as e:
+            print(f"[Flashpoint] Digest send error ({sub['email']}): {e}")
+    print(f"[Flashpoint] Daily digest sent to {sent}/{len(subs)} subscribers")
+
+
 # ── Metric helpers ──────────────────────────────────────────────────────────────
 
 def _weighted_score(a: dict) -> float:
@@ -477,10 +618,39 @@ async def _background_refresh():
         await asyncio.sleep(CACHE_TTL_SECONDS)
 
 
+async def _daily_digest_loop():
+    """Fire the daily digest at 07:00 UTC every day."""
+    DIGEST_HOUR = 7  # UTC
+    while True:
+        now   = datetime.now(timezone.utc)
+        next_ = now.replace(hour=DIGEST_HOUR, minute=0, second=0, microsecond=0)
+        if now >= next_:
+            next_ = next_.replace(day=next_.day + 1)
+        wait_secs = (next_ - now).total_seconds()
+        print(f"[Flashpoint] Daily digest scheduled in {wait_secs/3600:.1f}h "
+              f"(next run: {next_.strftime('%Y-%m-%d %H:%M UTC')})")
+        await asyncio.sleep(wait_secs)
+        try:
+            # Use cached data if fresh, else fetch
+            data = _cache.get("data") or {}
+            loop = asyncio.get_event_loop()
+            loop.run_in_executor(
+                None, send_daily_digest,
+                data.get("tension_index", 0),
+                data.get("tension_label", "Unknown"),
+                data.get("brief", ""),
+                data.get("flashpoints", []),
+                data.get("regional_pulse", []),
+            )
+        except Exception as exc:
+            print(f"[Flashpoint] Daily digest error: {exc}")
+
+
 @app.on_event("startup")
 async def startup_event():
     init_db()
     asyncio.create_task(_background_refresh())
+    asyncio.create_task(_daily_digest_loop())
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────────
