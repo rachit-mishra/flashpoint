@@ -523,7 +523,8 @@
     /* ── Regional Pulse tooltip ──────────────────────────────────────────── */
     .pulse-row { position: relative; cursor: default; }
 
-    .pulse-row:hover .pulse-tip { opacity: 1; pointer-events: auto; }
+    /* Tooltip visibility is now JS-managed (.is-open) so mouse can enter it */
+    .pulse-tip.is-open { opacity: 1; pointer-events: auto; }
 
     .pulse-tip {
       position: absolute;
@@ -824,6 +825,28 @@
       font-weight: 700;
       line-height: 1;
     }
+
+    .cat-col { position: relative; cursor: default; }
+
+    .cat-tip {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 0;
+      min-width: 260px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--r-sm);
+      padding: 14px 16px;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+      z-index: 30;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    /* Last two columns: right-align tooltip so it doesn't clip off-screen */
+    .cat-col:nth-last-child(-n+2) .cat-tip { left: auto; right: 0; }
+    .cat-tip.is-open { opacity: 1; pointer-events: auto; }
 
     /* ── Regional sparklines ─────────────────────────────────────────────── */
     .spark-cell { flex-shrink: 0; opacity: 0.75; }
@@ -1269,6 +1292,30 @@ const SENT_CLR = {
   'De-escalating': { bg:'rgba(34,197,94,0.10)',  txt:'#4ade80' },
 };
 
+/* ─── Hoverable tooltip helpers ──────────────────────────────────────── */
+// Shared timer so moving between row→tooltip doesn't flash-hide it
+let _tipHideTimer = null;
+
+function _openTip(tip) {
+  clearTimeout(_tipHideTimer);
+  // Close every other open tip first
+  document.querySelectorAll('.pulse-tip.is-open, .cat-tip.is-open').forEach(t => {
+    if (t !== tip) t.classList.remove('is-open');
+  });
+  tip.classList.add('is-open');
+}
+
+function _closeTipAfterDelay(tip, ms = 140) {
+  _tipHideTimer = setTimeout(() => tip.classList.remove('is-open'), ms);
+}
+
+function _bindTip(trigger, tip) {
+  trigger.addEventListener('mouseenter', () => _openTip(tip));
+  trigger.addEventListener('mouseleave', () => _closeTipAfterDelay(tip));
+  tip.addEventListener('mouseenter',     () => clearTimeout(_tipHideTimer));
+  tip.addEventListener('mouseleave',     () => _closeTipAfterDelay(tip, 80));
+}
+
 /* ─── Counter animation ───────────────────────────────────────────────── */
 function countTo(el, target, ms = 1300) {
   const start = performance.now();
@@ -1506,6 +1553,9 @@ function renderPulse(regional) {
     row.appendChild(score);
     row.appendChild(tip);
     list.appendChild(row);
+
+    // JS hover (keeps tooltip open when mouse moves into it to click links)
+    _bindTip(row, tip);
 
     // trigger bar animation after a paint frame
     requestAnimationFrame(() => {
@@ -1852,7 +1902,7 @@ const CAT_COLORS = {
   Diplomacy: '#22c55e',
 };
 
-function renderCategories(breakdown) {
+function renderCategories(breakdown, catArticles = {}) {
   const grid = document.getElementById('js-cats-grid');
   if (!grid) return;
   grid.innerHTML = '';
@@ -1861,8 +1911,9 @@ function renderCategories(breakdown) {
   const maxVal  = Math.max(...entries.map(([, v]) => v), 1);
 
   entries.forEach(([cat, count]) => {
-    const color = CAT_COLORS[cat] || '#4b5563';
-    const pct   = (count / maxVal) * 100;
+    const color    = CAT_COLORS[cat] || '#4b5563';
+    const pct      = (count / maxVal) * 100;
+    const articles = catArticles[cat] || [];
 
     const col = document.createElement('div');
     col.className = 'cat-col';
@@ -1871,7 +1922,46 @@ function renderCategories(breakdown) {
       `<div class="cat-track"><div class="cat-fill" style="background:${color};"` +
       ` data-pct="${pct.toFixed(1)}"></div></div>` +
       `<div class="cat-count" style="color:${color};">${count}</div>`;
+
+    // Tooltip
+    const tip = document.createElement('div');
+    tip.className = 'cat-tip';
+
+    const head = document.createElement('div');
+    head.className   = 'pulse-tip-head';  // reuse existing style
+    head.textContent = `${cat} · ${count} event${count !== 1 ? 's' : ''}`;
+    tip.appendChild(head);
+
+    if (articles.length > 0) {
+      const artList = document.createElement('div');
+      artList.className = 'pulse-tip-articles';
+      articles.forEach(a => {
+        const item  = document.createElement('div');
+        item.className = 'pulse-tip-article';
+        const arrow = document.createElement('span');
+        arrow.className   = 'pulse-tip-arrow';
+        arrow.textContent = '→';
+        const link  = document.createElement('a');
+        link.href   = a.url || '#';
+        link.target = '_blank';
+        link.rel    = 'noopener noreferrer';
+        link.textContent = a.title.length > 68 ? a.title.slice(0, 65) + '…' : a.title;
+        item.appendChild(arrow);
+        item.appendChild(link);
+        artList.appendChild(item);
+      });
+      tip.appendChild(artList);
+    } else {
+      const noData = document.createElement('div');
+      noData.style.cssText = 'font-size:11px;color:var(--text-3);padding:4px 0;';
+      noData.textContent = 'No events in this category today.';
+      tip.appendChild(noData);
+    }
+
+    col.appendChild(tip);
     grid.appendChild(col);
+
+    _bindTip(col, tip);
   });
 
   // Trigger bar animations after paint
@@ -2171,7 +2261,7 @@ async function load() {
     renderFlashpoints(data.flashpoints);
     renderPulse(data.regional_pulse);
     renderTicker(data);
-    renderCategories(data.category_breakdown || {});
+    renderCategories(data.category_breakdown || {}, data.category_articles || {});
     renderTimestamp(data.last_updated);
     renderMap(data);
 

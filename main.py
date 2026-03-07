@@ -390,6 +390,22 @@ def compute_category_breakdown(articles: list[dict]) -> dict:
     return counts
 
 
+def compute_category_articles(articles: list[dict]) -> dict:
+    """Top 3 articles per category, sorted by severity, for the breakdown tooltip."""
+    cats = list(CATEGORY_WEIGHTS.keys())  # Nuclear, Conflict, Terrorism, Economic, Diplomacy
+    buckets: dict[str, list] = {cat: [] for cat in cats}
+    for a in articles:
+        if _is_analyzed(a):
+            cat = a.get("category", "")
+            if cat in buckets:
+                buckets[cat].append(a)
+    result = {}
+    for cat, arts in buckets.items():
+        top = sorted(arts, key=lambda x: -x.get("severity", 0))[:3]
+        result[cat] = [{"title": a.get("title", ""), "url": a.get("url", "#")} for a in top]
+    return result
+
+
 # ── Data refresh ────────────────────────────────────────────────────────────────
 
 async def refresh_data() -> dict:
@@ -437,6 +453,7 @@ async def refresh_data() -> dict:
         "regional_pulse":      regional_pulse_data,
         "sentiment_breakdown": compute_sentiment_breakdown(enriched),
         "category_breakdown":  compute_category_breakdown(enriched),
+        "category_articles":   compute_category_articles(enriched),
         "brief":               brief,
         "last_updated":        datetime.now(timezone.utc).isoformat(),
         "total_events":        len(enriched),
