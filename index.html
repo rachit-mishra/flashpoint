@@ -1921,9 +1921,9 @@ async function fetchRegionalHistory() {
 // ISO 3166-1 numeric → API region display name
 const COUNTRY_REGION = (() => {
   const m = {};
-  // Americas
-  [32,44,68,76,84,124,152,170,188,192,214,218,222,308,320,328,332,340,
-   388,484,558,591,600,604,630,659,662,670,740,780,840,858,862
+  // Americas (incl. French Guiana 254, Falklands 238)
+  [32,44,68,76,84,124,152,170,188,192,214,218,222,238,254,308,320,328,
+   332,340,388,484,558,591,600,604,630,659,662,670,740,780,840,858,862
   ].forEach(id => m[id] = 'Americas');
   // Europe (includes Russia 643)
   [8,20,40,56,70,100,112,191,196,203,208,233,246,250,276,300,348,352,
@@ -1933,26 +1933,28 @@ const COUNTRY_REGION = (() => {
   // Middle East
   [31,48,51,268,364,368,376,400,414,422,512,634,682,760,784,792,887
   ].forEach(id => m[id] = 'Middle East');
-  // Asia  (display name for "Asia Pacific")
-  [4,36,50,64,96,104,116,144,156,344,356,360,392,398,408,410,417,418,
-   458,496,524,554,586,598,608,626,702,704,762,764,795,860
+  // Asia (display name for "Asia Pacific"; incl. New Caledonia 540, Fr. Polynesia 258)
+  [4,36,50,64,96,104,116,144,156,258,344,356,360,392,398,408,410,417,
+   418,458,496,524,540,554,586,598,608,626,702,704,762,764,795,860
   ].forEach(id => m[id] = 'Asia');
-  // Africa
-  [12,24,72,108,120,132,140,148,174,178,180,204,226,231,232,262,266,
-   270,288,324,384,404,426,430,434,450,454,466,478,480,504,508,516,
-   562,566,646,678,686,694,706,710,716,728,729,748,768,788,800,818,834,854,894
+  // Africa (incl. Mayotte 175, Réunion 638, W. Sahara 732)
+  [12,24,72,108,120,132,140,148,174,175,178,180,204,226,231,232,262,
+   266,270,288,324,384,404,426,430,434,450,454,466,478,480,504,508,
+   516,562,566,638,646,678,686,694,706,710,716,728,729,732,748,768,
+   788,800,818,834,854,894
   ].forEach(id => m[id] = 'Africa');
   return m;
 })();
 
 // Representative [lng, lat] for flashpoint marker placement
+// Positioned at actual current hotspot geography, not region centroids
 const REGION_CENTERS = {
-  'Middle East': [ 44.0, 32.0],   // Iraq/Syria belt
-  'Europe':      [ 28.0, 49.5],   // Eastern Europe / Ukraine
-  'Asia':        [105.0, 22.0],   // South China Sea / SE Asia
-  'Africa':      [ 22.0,  3.0],   // Central Africa
-  'Americas':    [-68.0,  4.0],   // N. South America
-  'Global':      [ 50.0, 55.0],   // Catch-all (Russia area)
+  'Middle East': [ 44.4, 33.3],   // Baghdad / Iraq-Syria corridor
+  'Europe':      [ 31.2, 49.0],   // Kyiv / eastern Ukraine front
+  'Asia':        [114.2, 22.3],   // South China Sea / HK strait
+  'Africa':      [ 23.5,  6.5],   // C. African Republic / Sudan border
+  'Americas':    [-76.0,  4.5],   // Colombia / Venezuela flashpoint
+  'Global':      [ 37.6, 55.7],   // Moscow (Conflict & War catch-all)
 };
 
 let _worldTopo = null; // topology cached after first fetch
