@@ -977,6 +977,178 @@
     @media (max-width: 600px) {
       .map-container { height: 260px; }
     }
+
+    /* ── Article Feed ────────────────────────────────────────────────────── */
+    .row-feed { margin-bottom: 18px; }
+
+    .feed-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .feed-filter-btn {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .feed-filter-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-2);
+    }
+
+    .feed-filter-btn.active {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.15);
+      color: var(--text-1);
+    }
+
+    .feed-filter-btn .feed-count {
+      font-size: 8px;
+      opacity: 0.6;
+    }
+
+    .feed-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) { .feed-grid { grid-template-columns: 1fr; } }
+
+    .feed-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 16px;
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.18s, border-color 0.18s;
+    }
+
+    .feed-card:hover {
+      background: var(--surface-3);
+      border-color: var(--border-hover);
+    }
+
+    .feed-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .feed-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+
+    .feed-cat-badge {
+      font-family: var(--font-m);
+      font-size: 8.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .feed-sent-badge {
+      font-family: var(--font-m);
+      font-size: 8px;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .feed-sev {
+      font-family: var(--font-m);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+      color: var(--text-3);
+    }
+
+    .feed-title {
+      font-family: var(--font-d);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-1);
+      line-height: 1.4;
+    }
+
+    .feed-insight {
+      font-size: 11.5px;
+      color: var(--text-2);
+      line-height: 1.55;
+    }
+
+    .feed-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 2px;
+    }
+
+    .feed-meta {
+      font-family: var(--font-m);
+      font-size: 9.5px;
+      color: var(--text-3);
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feed-read-link {
+      font-family: var(--font-m);
+      font-size: 9px;
+      color: #3b82f6;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.18s;
+    }
+
+    .feed-card:hover .feed-read-link { opacity: 1; }
+
+    .feed-show-more {
+      text-align: center;
+      margin-top: 14px;
+    }
+
+    .feed-show-more-btn {
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 7px 20px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .feed-show-more-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text-2);
+    }
   </style>
 </head>
 
@@ -1228,6 +1400,56 @@
           Active Flashpoint
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── INTELLIGENCE FEED ─────────────────────────────────────────────── -->
+  <div class="row-feed">
+    <div class="card" style="padding:22px 26px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div class="card-eyebrow" style="margin-bottom:0;">Intelligence Feed</div>
+        <div id="js-feed-total" style="font-family:var(--font-m);font-size:9px;
+          color:var(--text-3);letter-spacing:0.08em;"></div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="feed-filters" id="js-feed-filters">
+        <button class="feed-filter-btn active" data-cat="ALL">
+          All <span class="feed-count" id="js-fc-ALL"></span>
+        </button>
+        <button class="feed-filter-btn" data-cat="Conflict">
+          Conflict <span class="feed-count" id="js-fc-Conflict"></span>
+        </button>
+        <button class="feed-filter-btn" data-cat="Diplomacy">
+          Diplomacy <span class="feed-count" id="js-fc-Diplomacy"></span>
+        </button>
+        <button class="feed-filter-btn" data-cat="Economic">
+          Economic <span class="feed-count" id="js-fc-Economic"></span>
+        </button>
+        <button class="feed-filter-btn" data-cat="Nuclear">
+          Nuclear <span class="feed-count" id="js-fc-Nuclear"></span>
+        </button>
+        <button class="feed-filter-btn" data-cat="Terrorism">
+          Terrorism <span class="feed-count" id="js-fc-Terrorism"></span>
+        </button>
+      </div>
+
+      <!-- Skeleton -->
+      <div id="js-feed-skel" class="feed-grid">
+        <div class="skel" style="height:120px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:120px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:120px;border-radius:var(--r-sm);"></div>
+        <div class="skel" style="height:120px;border-radius:var(--r-sm);"></div>
+      </div>
+
+      <div class="feed-grid" id="js-feed-grid" style="display:none;"></div>
+
+      <div class="feed-show-more" id="js-feed-more" style="display:none;">
+        <button class="feed-show-more-btn" id="js-feed-more-btn">Show more</button>
+      </div>
+
+      <div id="js-feed-empty" style="display:none;font-size:13px;color:var(--text-3);
+           padding:24px 0;text-align:center;">No articles in this category.</div>
     </div>
   </div>
 
@@ -2299,6 +2521,135 @@ async function renderMap(pulseData) {
   if (zReset) zReset.onclick = () => svg.transition().duration(380).call(zoom.transform, d3.zoomIdentity);
 }
 
+/* ─── Intelligence Feed ───────────────────────────────────────────────── */
+const CAT_COLORS = {
+  'Nuclear':      { bg:'rgba(220,38,38,0.15)',   txt:'#f87171',  border:'rgba(220,38,38,0.3)'   },
+  'Conflict':     { bg:'rgba(245,158,11,0.13)',  txt:'#fbbf24',  border:'rgba(245,158,11,0.28)' },
+  'Terrorism':    { bg:'rgba(239,68,68,0.13)',   txt:'#fca5a5',  border:'rgba(239,68,68,0.28)'  },
+  'Economic':     { bg:'rgba(59,130,246,0.13)',  txt:'#93c5fd',  border:'rgba(59,130,246,0.28)' },
+  'Diplomacy':    { bg:'rgba(34,197,94,0.12)',   txt:'#86efac',  border:'rgba(34,197,94,0.25)'  },
+  'Cyber':        { bg:'rgba(6,182,212,0.12)',   txt:'#67e8f9',  border:'rgba(6,182,212,0.25)'  },
+  'Sanctions':    { bg:'rgba(245,158,11,0.12)',  txt:'#fde68a',  border:'rgba(245,158,11,0.25)' },
+  'Humanitarian': { bg:'rgba(236,72,153,0.12)',  txt:'#f9a8d4',  border:'rgba(236,72,153,0.25)' },
+  'Protest':      { bg:'rgba(168,85,247,0.12)',  txt:'#d8b4fe',  border:'rgba(168,85,247,0.25)' },
+  'Election':     { bg:'rgba(139,92,246,0.12)',  txt:'#c4b5fd',  border:'rgba(139,92,246,0.25)' },
+  'Other':        { bg:'rgba(75,85,99,0.15)',    txt:'#9ca3af',  border:'rgba(75,85,99,0.3)'    },
+};
+
+let _feedArticles  = [];
+let _feedVisible   = 12;
+let _feedActiveCat = 'ALL';
+
+function _buildFeedCard(a) {
+  const cat    = CAT_COLORS[a.category] || CAT_COLORS['Other'];
+  const sc     = SENT_CLR[a.sentiment]  || SENT_CLR['Neutral'];
+  const sev    = a.severity || 1;
+  const sevDot = '●'.repeat(sev) + '○'.repeat(5 - sev);
+  const actors = Array.isArray(a.actors) && a.actors.length
+                 ? a.actors.join(' · ') : '';
+  const hasUrl = a.url && a.url !== '#';
+
+  const card = document.createElement('a');
+  card.className = 'feed-card';
+  card.href      = hasUrl ? a.url : '#';
+  if (hasUrl) { card.target = '_blank'; card.rel = 'noopener noreferrer'; }
+
+  card.innerHTML = `
+    <div class="feed-card-top">
+      <div class="feed-badges">
+        <span class="feed-cat-badge"
+          style="background:${cat.bg};color:${cat.txt};border:1px solid ${cat.border};">
+          ${a.category}
+        </span>
+        <span class="feed-sent-badge"
+          style="background:${sc.bg};color:${sc.txt};">
+          ${a.sentiment}
+        </span>
+      </div>
+      <span class="feed-sev" style="color:${SEV_HEX[sev] || '#888'};">${sevDot}</span>
+    </div>
+    <div class="feed-title">${a.title}</div>
+    ${a.insight ? `<div class="feed-insight">${a.insight}</div>` : ''}
+    <div class="feed-card-foot">
+      <div class="feed-meta">
+        <span>${a.source || ''}</span>
+        ${actors ? `<span style="color:var(--text-3);">·</span><span>${actors}</span>` : ''}
+      </div>
+      ${hasUrl ? `<span class="feed-read-link">Read →</span>` : ''}
+    </div>`;
+
+  return card;
+}
+
+function _renderFeedGrid() {
+  const grid  = document.getElementById('js-feed-grid');
+  const empty = document.getElementById('js-feed-empty');
+  const more  = document.getElementById('js-feed-more');
+  grid.innerHTML = '';
+
+  const filtered = _feedActiveCat === 'ALL'
+    ? _feedArticles
+    : _feedArticles.filter(a => a.category === _feedActiveCat);
+
+  if (filtered.length === 0) {
+    grid.style.display  = 'none';
+    empty.style.display = 'block';
+    more.style.display  = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.style.display  = 'grid';
+  const slice = filtered.slice(0, _feedVisible);
+  slice.forEach(a => grid.appendChild(_buildFeedCard(a)));
+  more.style.display = filtered.length > _feedVisible ? 'block' : 'none';
+}
+
+function renderFeed(articles) {
+  document.getElementById('js-feed-skel').style.display = 'none';
+  _feedArticles = articles || [];
+
+  // Count badges per category
+  const counts = {};
+  _feedArticles.forEach(a => { counts[a.category] = (counts[a.category] || 0) + 1; });
+  const totalEl = document.getElementById('js-feed-total');
+  if (totalEl) totalEl.textContent = `${_feedArticles.length} articles`;
+
+  ['ALL','Conflict','Diplomacy','Economic','Nuclear','Terrorism'].forEach(cat => {
+    const el = document.getElementById(`js-fc-${cat}`);
+    if (!el) return;
+    el.textContent = cat === 'ALL'
+      ? `(${_feedArticles.length})`
+      : counts[cat] ? `(${counts[cat]})` : '';
+  });
+
+  // Hide filter buttons with 0 articles (except ALL)
+  document.querySelectorAll('.feed-filter-btn[data-cat]').forEach(btn => {
+    const cat = btn.dataset.cat;
+    if (cat === 'ALL') return;
+    btn.style.display = counts[cat] ? '' : 'none';
+  });
+
+  _renderFeedGrid();
+}
+
+// Filter tab click handler
+document.getElementById('js-feed-filters').addEventListener('click', e => {
+  const btn = e.target.closest('.feed-filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.feed-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _feedActiveCat = btn.dataset.cat;
+  _feedVisible   = 12;
+  _renderFeedGrid();
+});
+
+// Show more handler
+document.getElementById('js-feed-more-btn').addEventListener('click', () => {
+  _feedVisible += 12;
+  _renderFeedGrid();
+});
+
 /* ─── Fetch & render ──────────────────────────────────────────────────── */
 async function load() {
   try {
@@ -2315,6 +2666,7 @@ async function load() {
     renderCategories(data.category_breakdown || {}, data.category_articles || {});
     renderTimestamp(data.last_updated);
     renderMap(data);
+    renderFeed(data.articles || []);
 
     // Refresh history chart + sparklines on each pulse update
     fetchHistory();

@@ -586,6 +586,13 @@ async def refresh_data() -> dict:
     loop.run_in_executor(None, save_reading, tension_idx, tension_label, len(enriched), regional_scores)
     loop.run_in_executor(None, check_and_send_alerts, tension_idx, tension_label, brief, flashpoints)
 
+    # Article feed — analyzed articles sorted by severity, top 30
+    feed = sorted(
+        [a for a in enriched if _is_analyzed(a)],
+        key=lambda x: (-x.get("severity", 0),
+                       SENTIMENT_ORDER.get(x.get("sentiment", "Neutral"), 2))
+    )[:30]
+
     return {
         "tension_index":       tension_idx,
         "tension_label":       tension_label,
@@ -598,6 +605,21 @@ async def refresh_data() -> dict:
         "brief":               brief,
         "last_updated":        datetime.now(timezone.utc).isoformat(),
         "total_events":        len(enriched),
+        "articles": [
+            {
+                "title":     a.get("title", ""),
+                "url":       a.get("url", "#"),
+                "source":    a.get("source", ""),
+                "region":    REGION_DISPLAY.get(a.get("region", ""), a.get("region", "")),
+                "category":  a.get("category", "Other"),
+                "severity":  a.get("severity", 1),
+                "sentiment": a.get("sentiment", "Neutral"),
+                "actors":    a.get("actors", []),
+                "insight":   a.get("insight", ""),
+                "published": a.get("published", ""),
+            }
+            for a in feed
+        ],
     }
 
 
