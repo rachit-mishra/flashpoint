@@ -11,6 +11,7 @@ import json
 import re
 import time
 import anthropic
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -67,14 +68,26 @@ def analyze_article(title: str, summary: str, _retries: int = 3) -> dict:
 
 
 def analyze_batch(articles: list[dict], max_articles: int = 15) -> list[dict]:
-    """Analyze up to max_articles and return enriched list."""
-    enriched = []
-    for article in articles[:max_articles]:
-        analysis = analyze_article(article["title"], article.get("summary", ""))
-        enriched.append({**article, **analysis})
-    # Remaining articles get fallback
-    for article in articles[max_articles:]:
-        enriched.append({**article, **_fallback()})
+    """Analyze up to max_articles in parallel, fallback for the rest."""
+    to_analyze = articles[:max_articles]
+    rest       = articles[max_articles:]
+
+    results = [_fallback()] * len(to_analyze)
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {
+            pool.submit(analyze_article, a["title"], a.get("summary", "")): i
+            for i, a in enumerate(to_analyze)
+        }
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                print(f"[Flashpoint] Batch analysis error at index {idx}: {e}")
+
+    enriched  = [{**a, **r} for a, r in zip(to_analyze, results)]
+    enriched += [{**a, **_fallback()} for a in rest]
     return enriched
 
 
