@@ -58,6 +58,9 @@ def analyze_article(title: str, summary: str, _retries: int = 3) -> dict:
                 wait = 2 ** attempt  # 1s, 2s, 4s
                 print(f"[Flashpoint] API overloaded (529), retrying in {wait}s… (attempt {attempt+1}/{_retries})")
                 time.sleep(wait)
+            elif e.status_code in (402, 403):
+                print(f"[Flashpoint] API credits exhausted or access disabled ({e.status_code}) — skipping analysis")
+                return _fallback()
             else:
                 print(f"Claude API error: {e}")
                 return _fallback()

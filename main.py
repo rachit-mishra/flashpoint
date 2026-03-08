@@ -41,7 +41,7 @@ DB_PATH  = Path(os.getenv("DB_PATH", str(BASE_DIR / "flashpoint.db")))
 _cache: dict           = {}
 _previous_tension: Optional[int] = None
 _cache_lock            = asyncio.Lock()
-CACHE_TTL_SECONDS      = 300  # 5 minutes
+CACHE_TTL_SECONDS      = 3600  # 1 hour
 
 # ── Weight tables ──────────────────────────────────────────────────────────────
 CATEGORY_WEIGHTS = {
