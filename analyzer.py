@@ -58,8 +58,10 @@ def analyze_article(title: str, summary: str, _retries: int = 3) -> dict:
                 wait = 2 ** attempt  # 1s, 2s, 4s
                 print(f"[Flashpoint] API overloaded (529), retrying in {wait}s… (attempt {attempt+1}/{_retries})")
                 time.sleep(wait)
-            elif e.status_code in (402, 403):
-                print(f"[Flashpoint] API credits exhausted or access disabled ({e.status_code}) — skipping analysis")
+            elif e.status_code in (400, 402, 403) and (
+                "credit" in str(e).lower() or e.status_code in (402, 403)
+            ):
+                print(f"[Flashpoint] API credits exhausted ({e.status_code}) — skipping analysis")
                 return _fallback()
             else:
                 print(f"Claude API error: {e}")
@@ -115,7 +117,12 @@ def generate_situation_report(articles: list[dict], _retries: int = 3) -> str:
             )
             return message.content[0].text.strip()
         except anthropic.APIStatusError as e:
-            if e.status_code == 529 and attempt < _retries - 1:
+            if e.status_code in (400, 402, 403) and (
+                "credit" in str(e).lower() or e.status_code in (402, 403)
+            ):
+                print(f"[Flashpoint] Situation report: credits exhausted ({e.status_code}) — skipping")
+                return "Intelligence brief unavailable — API credits exhausted. Top up at console.anthropic.com."
+            elif e.status_code == 529 and attempt < _retries - 1:
                 wait = 2 ** attempt
                 print(f"[Flashpoint] Situation report overloaded (529), retrying in {wait}s… (attempt {attempt+1}/{_retries})")
                 time.sleep(wait)
