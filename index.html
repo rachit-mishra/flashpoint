@@ -2522,7 +2522,7 @@ async function renderMap(pulseData) {
 }
 
 /* ─── Intelligence Feed ───────────────────────────────────────────────── */
-const CAT_COLORS = {
+const FEED_CAT_COLORS = {
   'Nuclear':      { bg:'rgba(220,38,38,0.15)',   txt:'#f87171',  border:'rgba(220,38,38,0.3)'   },
   'Conflict':     { bg:'rgba(245,158,11,0.13)',  txt:'#fbbf24',  border:'rgba(245,158,11,0.28)' },
   'Terrorism':    { bg:'rgba(239,68,68,0.13)',   txt:'#fca5a5',  border:'rgba(239,68,68,0.28)'  },
@@ -2541,7 +2541,7 @@ let _feedVisible   = 12;
 let _feedActiveCat = 'ALL';
 
 function _buildFeedCard(a) {
-  const cat    = CAT_COLORS[a.category] || CAT_COLORS['Other'];
+  const cat    = FEED_CAT_COLORS[a.category] || FEED_CAT_COLORS['Other'];
   const sc     = SENT_CLR[a.sentiment]  || SENT_CLR['Neutral'];
   const sev    = a.severity || 1;
   const sevDot = '●'.repeat(sev) + '○'.repeat(5 - sev);
