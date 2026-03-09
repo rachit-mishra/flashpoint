@@ -234,7 +234,20 @@ def send_alert_email(email: str, threshold: int, score: int, label: str,
     if not api_key:
         print(f"[Flashpoint] Alert skipped (no RESEND_API_KEY): {email}")
         return False
-    from_addr = os.getenv("ALERT_FROM_EMAIL", "FLASHPOINT <alerts@flashpoint.io>")
+    import base64 as _b64
+    from_addr   = os.getenv("ALERT_FROM_EMAIL", "FLASHPOINT <alerts@flashpoint.io>")
+    base_url    = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    token       = _b64.urlsafe_b64encode(email.encode()).decode()
+    unsub_url   = f"{base_url}/api/alerts/unsubscribe?email={token}"
+    plain_fps   = "\n".join(f"- {fp['region']}: {fp.get('insight','')}" for fp in flashpoints[:3])
+    plain_text  = (
+        f"FLASHPOINT Alert — Tension at {score}/100 ({label})\n\n"
+        f"Your threshold: {threshold}/100\n\n"
+        f"SIGNAL BRIEF\n{brief}\n\n"
+        f"ACTIVE FLASHPOINTS\n{plain_fps}\n\n"
+        f"View dashboard: {base_url}\n"
+        f"Unsubscribe: {unsub_url}"
+    )
     try:
         resp = http_req.post(
             "https://api.resend.com/emails",
@@ -244,6 +257,11 @@ def send_alert_email(email: str, threshold: int, score: int, label: str,
                 "to":      email,
                 "subject": f"⚡ Tension at {score}/100 ({label}) — FLASHPOINT Alert",
                 "html":    _build_alert_html(score, label, threshold, brief, flashpoints, email),
+                "text":    plain_text,
+                "headers": {
+                    "List-Unsubscribe":      f"<{unsub_url}>",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                },
             },
             timeout=10,
         )
@@ -384,13 +402,25 @@ def send_daily_digest(score: int, label: str, brief: str,
     if not subs:
         print("[Flashpoint] Daily digest: no subscribers")
         return
-    import base64
+    import base64 as _b64
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
     sent = 0
     for sub in subs:
-        import base64 as _b64
-        token = _b64.urlsafe_b64encode(sub["email"].encode()).decode()
-        html  = _build_digest_html(score, label, brief, flashpoints, regional, date_str)
-        html  = html.replace("{token}", token)
+        token     = _b64.urlsafe_b64encode(sub["email"].encode()).decode()
+        unsub_url = f"{base_url}/api/alerts/unsubscribe?email={token}"
+        html      = _build_digest_html(score, label, brief, flashpoints, regional, date_str)
+        html      = html.replace("{token}", token)
+        fp_lines  = "\n".join(f"- {fp['region']}: {fp.get('insight','')}" for fp in flashpoints[:5])
+        reg_lines = "\n".join(f"- {r['region']}: {r['score']}/100 ({r['label']})" for r in regional[:6])
+        plain_text = (
+            f"FLASHPOINT Daily Intelligence Digest — {date_str}\n\n"
+            f"GLOBAL TENSION: {score}/100 ({label})\n\n"
+            f"TODAY'S SIGNAL BRIEF\n{brief}\n\n"
+            f"ACTIVE FLASHPOINTS\n{fp_lines}\n\n"
+            f"REGIONAL PULSE\n{reg_lines}\n\n"
+            f"View live dashboard: {base_url}\n"
+            f"Unsubscribe: {unsub_url}"
+        )
         try:
             resp = http_req.post(
                 "https://api.resend.com/emails",
@@ -401,6 +431,11 @@ def send_daily_digest(score: int, label: str, brief: str,
                     "to":      sub["email"],
                     "subject": f"⚡ FLASHPOINT Daily Digest · {date_str} · Tension {score}/100",
                     "html":    html,
+                    "text":    plain_text,
+                    "headers": {
+                        "List-Unsubscribe":      f"<{unsub_url}>",
+                        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                    },
                 },
                 timeout=10,
             )
@@ -676,6 +711,18 @@ async def startup_event():
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────────
+
+@app.get("/bimi-logo.svg")
+async def serve_bimi_logo():
+    """BIMI brand logo — square SVG required for Gmail sender avatar."""
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#b91c1c"/>
+  <text x="50" y="68" font-size="58" text-anchor="middle" font-family="Arial,sans-serif">⚡</text>
+</svg>"""
+    from fastapi.responses import Response
+    return Response(content=svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
