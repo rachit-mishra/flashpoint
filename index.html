@@ -1287,6 +1287,13 @@
         <span class="live-text">LIVE</span>
       </div>
       <div class="header-ts" id="js-ts">—</div>
+      <a href="/intel" style="font-family:var(--font-m);font-size:9px;letter-spacing:0.18em;
+        color:var(--text-3);border:1px solid var(--border);border-radius:6px;
+        padding:5px 10px;transition:color 0.15s,border-color 0.15s;"
+        onmouseover="this.style.color='var(--text-1)';this.style.borderColor='var(--border-hover)';"
+        onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)';">
+        INTEL →
+      </a>
     </div>
   </header>
 
@@ -1641,6 +1648,16 @@
       <div class="cp-section">
         <div class="cp-section-label">Recent Intelligence</div>
         <div id="cp-articles"></div>
+      </div>
+      <div style="padding:0 0 18px;text-align:center;">
+        <a id="cp-fullpage-link" href="/intel" target="_blank"
+          style="display:inline-block;font-family:var(--font-m);font-size:9px;
+            letter-spacing:0.18em;color:var(--text-3);border:1px solid var(--border);
+            border-radius:7px;padding:8px 20px;transition:color 0.15s,border-color 0.15s;"
+          onmouseover="this.style.color='var(--text-1)';this.style.borderColor='var(--border-hover)';"
+          onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)';">
+          VIEW FULL INTEL PAGE →
+        </a>
       </div>
     </div>
   </div>
@@ -2848,10 +2865,11 @@ const _CP_SENT_COLOR = {
 };
 
 function openCountryPanel(name) {
-  document.getElementById('cp-name').textContent    = name;
-  document.getElementById('cp-badges').innerHTML    = '';
-  document.getElementById('cp-content').style.display  = 'none';
-  document.getElementById('cp-loading').style.display  = 'block';
+  document.getElementById('cp-name').textContent        = name;
+  document.getElementById('cp-badges').innerHTML        = '';
+  document.getElementById('cp-content').style.display   = 'none';
+  document.getElementById('cp-loading').style.display   = 'block';
+  document.getElementById('cp-fullpage-link').href      = `/intel?name=${encodeURIComponent(name)}`;
   document.getElementById('country-overlay').classList.add('open');
   document.getElementById('country-panel').classList.add('open');
   document.body.style.overflow = 'hidden';

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intelligence Explorer — FLASHPOINT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #080c14;
+      --surface:   #0d1220;
+      --surface-2: #111827;
+      --border:    rgba(255,255,255,0.055);
+      --border-h:  rgba(255,255,255,0.11);
+      --stable:    #22c55e;
+      --elevated:  #3b82f6;
+      --high:      #f59e0b;
+      --severe:    #ef4444;
+      --critical:  #dc2626;
+      --text-1:    #eef2ff;
+      --text-2:    #8b95a8;
+      --text-3:    #4b5563;
+      --r:    12px;
+      --r-sm:  8px;
+      --font-d: 'Space Grotesk', system-ui, sans-serif;
+      --font-b: 'Inter', system-ui, sans-serif;
+      --font-m: 'Space Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text-1);
+      font-family: var(--font-b); font-size: 14px; line-height: 1.6;
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Header ── */
+    .intel-header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex; align-items: center; gap: 20px;
+      height: 56px; position: sticky; top: 0; z-index: 10;
+      background: rgba(8,12,20,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .intel-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-family: var(--font-d); font-weight: 700;
+      font-size: 14px; letter-spacing: 0.14em;
+    }
+    .intel-logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-size: 14px; flex-shrink: 0;
+    }
+    .intel-nav-sep {
+      width: 1px; height: 20px; background: var(--border); flex-shrink: 0;
+    }
+    .intel-back {
+      font-size: 12px; color: var(--text-3); display: flex;
+      align-items: center; gap: 5px;
+      transition: color 0.15s;
+    }
+    .intel-back:hover { color: var(--text-2); }
+    .intel-page-title {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-3); margin-left: auto;
+    }
+
+    /* ── Shell ── */
+    .shell {
+      max-width: 1100px; margin: 0 auto;
+      padding: 36px 24px 64px;
+    }
+
+    /* ── Explorer mode (no ?name) ── */
+    .explorer-header {
+      margin-bottom: 28px;
+    }
+    .explorer-title {
+      font-family: var(--font-d); font-size: 22px; font-weight: 700;
+      letter-spacing: 0.02em; margin-bottom: 6px;
+    }
+    .explorer-sub {
+      font-size: 13px; color: var(--text-3);
+    }
+
+    .actors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .actor-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, transform 0.15s;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .actor-card:hover {
+      border-color: var(--border-h);
+      background: var(--surface-2);
+      transform: translateY(-1px);
+    }
+    .actor-card-name {
+      font-family: var(--font-d); font-size: 15px; font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .actor-card-sev {
+      font-family: var(--font-m); font-size: 11px; font-weight: 700;
+    }
+    .actor-card-meta {
+      font-size: 11px; color: var(--text-3);
+      display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    }
+    .actor-badge {
+      display: inline-block;
+      border-radius: 999px; padding: 2px 8px;
+      font-size: 9px; letter-spacing: 0.12em; font-weight: 600;
+    }
+    .actor-count {
+      color: var(--text-3); font-size: 10px;
+    }
+
+    /* ── Detail mode (?name=X) ── */
+    .detail-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-3); margin-bottom: 24px;
+      transition: color 0.15s;
+    }
+    .detail-back:hover { color: var(--text-2); }
+
+    .detail-hero {
+      margin-bottom: 28px;
+    }
+    .detail-name {
+      font-family: var(--font-d); font-size: 28px; font-weight: 700;
+      letter-spacing: 0.02em; margin-bottom: 10px;
+    }
+    .detail-badges { display: flex; gap: 7px; flex-wrap: wrap; }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+
+    .section-label {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px 22px;
+      margin-bottom: 16px;
+    }
+
+    .summary-text {
+      font-size: 14px; line-height: 1.8; color: var(--text-2);
+    }
+
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .stat-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 14px 12px; text-align: center;
+    }
+    .stat-val {
+      font-family: var(--font-m); font-size: 22px; font-weight: 700;
+      display: block; line-height: 1;
+    }
+    .stat-key {
+      font-size: 9px; color: var(--text-3); margin-top: 6px;
+      letter-spacing: 0.12em; text-transform: uppercase; display: block;
+    }
+
+    .art-item {
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .art-item:last-child { border-bottom: none; }
+    .art-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 5px;
+    }
+    .art-title {
+      font-size: 13px; line-height: 1.5; color: var(--text-1);
+      display: block; transition: color 0.15s;
+    }
+    .art-title:hover { color: #3b82f6; }
+    .art-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .art-insight {
+      font-size: 11px; color: var(--text-3);
+      font-style: italic; margin-top: 3px; line-height: 1.5;
+    }
+
+    /* Related actors sidebar */
+    .related-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; }
+    .related-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: color 0.15s;
+    }
+    .related-item:last-child { border-bottom: none; }
+    .related-item:hover .related-name { color: #3b82f6; }
+    .related-name { font-size: 13px; font-weight: 500; }
+    .related-sev {
+      font-family: var(--font-m); font-size: 11px; font-weight: 700;
+    }
+
+    /* Loading / empty states */
+    .state-msg {
+      padding: 60px 0; text-align: center;
+      color: var(--text-3); font-family: var(--font-m);
+      font-size: 11px; letter-spacing: 0.12em;
+    }
+
+    /* Skeleton */
+    .skel {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="intel-header">
+  <div class="intel-logo">
+    <div class="intel-logo-icon">⚡</div>
+    FLASHPOINT
+  </div>
+  <div class="intel-nav-sep"></div>
+  <a href="/" class="intel-back">← Live Dashboard</a>
+  <span class="intel-page-title" id="js-page-title">Intelligence Explorer</span>
+</header>
+
+<div class="shell">
+  <!-- ── EXPLORER MODE (no ?name) ── -->
+  <div id="view-explorer" style="display:none;">
+    <div class="explorer-header">
+      <div class="explorer-title">Active Intelligence</div>
+      <div class="explorer-sub" id="js-exp-sub">Loading current actors…</div>
+    </div>
+    <div id="js-actors-grid" class="actors-grid"></div>
+    <div id="js-exp-loading" class="state-msg">LOADING INTELLIGENCE…</div>
+  </div>
+
+  <!-- ── DETAIL MODE (?name=X) ── -->
+  <div id="view-detail" style="display:none;">
+    <a href="/intel" class="detail-back">← All Actors</a>
+
+    <div class="detail-hero">
+      <div class="detail-name" id="js-d-name"></div>
+      <div class="detail-badges" id="js-d-badges"></div>
+    </div>
+
+    <div id="js-d-loading" class="state-msg">GATHERING INTELLIGENCE…</div>
+
+    <div id="js-d-content" style="display:none;">
+      <div class="detail-grid">
+        <!-- Left: Summary + Articles -->
+        <div>
+          <div class="card">
+            <div class="section-label">Intelligence Assessment</div>
+            <div id="js-d-summary" class="summary-text"></div>
+          </div>
+
+          <div class="card">
+            <div class="section-label">Signal Metrics</div>
+            <div class="stats-row">
+              <div class="stat-box">
+                <span id="js-d-count" class="stat-val">—</span>
+                <span class="stat-key">Articles</span>
+              </div>
+              <div class="stat-box">
+                <span id="js-d-sev" class="stat-val">—</span>
+                <span class="stat-key">Avg Severity</span>
+              </div>
+              <div class="stat-box">
+                <span id="js-d-cat" class="stat-val" style="font-size:12px;margin-top:5px;">—</span>
+                <span class="stat-key">Category</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-label">Recent Intelligence</div>
+            <div id="js-d-articles"></div>
+          </div>
+        </div>
+
+        <!-- Right: Related actors -->
+        <div>
+          <div class="related-card">
+            <div class="section-label">Other Active Actors</div>
+            <div id="js-d-related"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEV_COLORS = ['','#22c55e','#3b82f6','#f59e0b','#ef4444','#dc2626'];
+const SENT_COLOR = {
+  'Escalating':    '#ef4444',
+  'De-escalating': '#22c55e',
+  'Uncertain':     '#f59e0b',
+  'Neutral':       '#3b82f6',
+};
+
+// ── Route: decide which view to show ─────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+const NAME   = params.get('name');
+
+if (NAME) {
+  document.getElementById('view-detail').style.display   = 'block';
+  document.getElementById('js-page-title').textContent   = NAME.toUpperCase();
+  document.getElementById('js-d-name').textContent       = NAME;
+  loadDetail(NAME);
+} else {
+  document.getElementById('view-explorer').style.display = 'block';
+  loadExplorer();
+}
+
+// ── Explorer ──────────────────────────────────────────────────────────
+async function loadExplorer() {
+  try {
+    const res  = await fetch('/api/pulse');
+    const data = await res.json();
+    document.getElementById('js-exp-loading').style.display = 'none';
+
+    // Aggregate actors from articles
+    const actorMap = {};
+    (data.articles || []).forEach(a => {
+      (a.actors || []).forEach(name => {
+        if (!name || name.length < 2) return;
+        if (!actorMap[name]) {
+          actorMap[name] = { count: 0, severities: [], sentiments: [], categories: [] };
+        }
+        actorMap[name].count++;
+        actorMap[name].severities.push(a.severity || 1);
+        actorMap[name].sentiments.push(a.sentiment || 'Neutral');
+        actorMap[name].categories.push(a.category  || 'Other');
+      });
+    });
+
+    const actors = Object.entries(actorMap)
+      .map(([name, d]) => ({
+        name,
+        count:     d.count,
+        avgSev:    d.severities.reduce((s,v) => s+v, 0) / d.severities.length,
+        sentiment: _mode(d.sentiments),
+        category:  _mode(d.categories),
+      }))
+      .sort((a, b) => b.avgSev - a.avgSev || b.count - a.count);
+
+    document.getElementById('js-exp-sub').textContent =
+      `${actors.length} actors identified across ${data.total_events || 0} current events`;
+
+    const grid = document.getElementById('js-actors-grid');
+    if (!actors.length) {
+      grid.innerHTML = '<p style="color:var(--text-3);font-size:13px;">No actor data available yet.</p>';
+      return;
+    }
+
+    actors.forEach(actor => {
+      const sc   = SENT_COLOR[actor.sentiment] || '#3b82f6';
+      const sevC = SEV_COLORS[Math.round(actor.avgSev)] || '#888';
+      const card = document.createElement('div');
+      card.className = 'actor-card';
+      card.innerHTML = `
+        <div class="actor-card-name">${actor.name}</div>
+        <div class="actor-card-sev" style="color:${sevC};">
+          ${'●'.repeat(Math.round(actor.avgSev))}${'○'.repeat(5 - Math.round(actor.avgSev))}
+        </div>
+        <div class="actor-card-meta">
+          <span class="actor-badge"
+            style="background:${sc}22;color:${sc};border:1px solid ${sc}44;">
+            ${actor.sentiment}
+          </span>
+          <span>${actor.category}</span>
+          <span class="actor-count">${actor.count} article${actor.count !== 1 ? 's' : ''}</span>
+        </div>`;
+      card.addEventListener('click', () => {
+        window.location.href = `/intel?name=${encodeURIComponent(actor.name)}`;
+      });
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    document.getElementById('js-exp-loading').textContent = 'Failed to load intelligence data.';
+  }
+}
+
+// ── Detail ────────────────────────────────────────────────────────────
+async function loadDetail(name) {
+  try {
+    // Load country detail + full actor list in parallel
+    const [detailRes, pulseRes] = await Promise.all([
+      fetch(`/api/country?name=${encodeURIComponent(name)}`),
+      fetch('/api/pulse'),
+    ]);
+    const d    = await detailRes.json();
+    const pulse = await pulseRes.json();
+
+    document.getElementById('js-d-loading').style.display  = 'none';
+    document.getElementById('js-d-content').style.display  = 'block';
+
+    // Badges
+    const sc = SENT_COLOR[d.dominant_sentiment] || '#3b82f6';
+    document.getElementById('js-d-badges').innerHTML = `
+      <span style="background:${sc}22;color:${sc};border:1px solid ${sc}44;
+        border-radius:999px;padding:3px 12px;font-size:11px;letter-spacing:0.12em;font-weight:600;">
+        ${(d.dominant_sentiment||'').toUpperCase()}
+      </span>
+      <span style="background:rgba(255,255,255,0.04);color:var(--text-2);
+        border:1px solid var(--border);border-radius:999px;padding:3px 12px;font-size:11px;">
+        ${d.dominant_category || ''}
+      </span>`;
+
+    // Summary
+    document.getElementById('js-d-summary').textContent = d.summary || '—';
+
+    // Stats
+    document.getElementById('js-d-count').textContent = d.article_count || 0;
+    const sevEl = document.getElementById('js-d-sev');
+    sevEl.textContent = d.avg_severity ? d.avg_severity.toFixed(1) : '—';
+    sevEl.style.color = SEV_COLORS[Math.round(d.avg_severity)] || 'var(--text-1)';
+    document.getElementById('js-d-cat').textContent = d.dominant_category || '—';
+
+    // Articles
+    const artCont = document.getElementById('js-d-articles');
+    if (!d.articles || !d.articles.length) {
+      artCont.innerHTML = '<p style="color:var(--text-3);font-size:13px;">No recent articles found.</p>';
+    } else {
+      artCont.innerHTML = d.articles.map(a => {
+        const dot  = SEV_COLORS[a.severity] || '#555';
+        const meta = [a.source, a.sentiment, a.category].filter(Boolean).join(' · ');
+        const ins  = (a.insight && a.insight !== 'Analysis unavailable.')
+                     ? `<div class="art-insight">${a.insight}</div>` : '';
+        return `<div class="art-item">
+          <div class="art-dot" style="background:${dot};"></div>
+          <div style="flex:1;min-width:0;">
+            <a href="${a.url||'#'}" target="_blank" rel="noopener" class="art-title">${a.title}</a>
+            <div class="art-meta">${meta}</div>${ins}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Related actors from pulse articles (excluding current actor)
+    const actorMap = {};
+    const nameLower = name.toLowerCase();
+    (pulse.articles || []).forEach(a => {
+      (a.actors || []).forEach(n => {
+        if (!n || n.length < 2 || n.toLowerCase() === nameLower) return;
+        if (!actorMap[n]) actorMap[n] = { count: 0, severities: [] };
+        actorMap[n].count++;
+        actorMap[n].severities.push(a.severity || 1);
+      });
+    });
+    const related = Object.entries(actorMap)
+      .map(([n, d]) => ({ name: n, avgSev: d.severities.reduce((s,v)=>s+v,0)/d.severities.length }))
+      .sort((a, b) => b.avgSev - a.avgSev)
+      .slice(0, 12);
+
+    const relCont = document.getElementById('js-d-related');
+    if (!related.length) {
+      relCont.innerHTML = '<p style="color:var(--text-3);font-size:12px;">No related actors.</p>';
+    } else {
+      relCont.innerHTML = related.map(r => {
+        const c = SEV_COLORS[Math.round(r.avgSev)] || '#888';
+        return `<div class="related-item"
+          onclick="window.location.href='/intel?name=${encodeURIComponent(r.name)}'">
+          <span class="related-name">${r.name}</span>
+          <span class="related-sev" style="color:${c};">${r.avgSev.toFixed(1)}</span>
+        </div>`;
+      }).join('');
+    }
+
+  } catch (e) {
+    document.getElementById('js-d-loading').textContent = 'Failed to load intelligence data.';
+  }
+}
+
+// ── Utility ───────────────────────────────────────────────────────────
+function _mode(arr) {
+  return arr.sort((a,b) => arr.filter(v=>v===a).length - arr.filter(v=>v===b).length).pop();
+}
+</script>
+</body>
+</html>

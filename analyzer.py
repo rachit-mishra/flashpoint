@@ -145,12 +145,18 @@ def generate_country_brief(name: str, articles: list[dict], _retries: int = 2) -
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=180,
+                system=(
+                    "You are a geopolitical intelligence analyst. "
+                    "The headlines provided are real, current news items extracted from live sources. "
+                    "Analyze them directly. Never say you lack access to real-time information — "
+                    "the data is given to you. Write in present tense, analytically, no hedging."
+                ),
                 messages=[{
                     "role": "user",
                     "content": (
-                        f"Based on these recent headlines involving {name}, write exactly 2 sentences: "
-                        f"(1) the current situation and (2) the key risk or trend to watch. "
-                        f"Be direct and analytical. No preamble.\n\nHeadlines:\n{headlines}"
+                        f"These headlines cover {name}. Write exactly 2 sentences: "
+                        f"(1) current situation summary, (2) key risk or trend to watch. "
+                        f"No preamble.\n\nHeadlines:\n{headlines}"
                     )
                 }],
             )

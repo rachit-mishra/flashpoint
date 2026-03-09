@@ -684,6 +684,13 @@ async def serve_dashboard():
     )
 
 
+@app.get("/intel", response_class=HTMLResponse)
+async def serve_intel():
+    return HTMLResponse(
+        content=(BASE_DIR / "intel.html").read_text(encoding="utf-8"), status_code=200
+    )
+
+
 @app.get("/api/pulse")
 async def get_pulse():
     if "data" not in _cache:
