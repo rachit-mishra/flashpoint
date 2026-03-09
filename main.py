@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from analyzer import analyze_batch, generate_situation_report
+from analyzer import analyze_batch, generate_situation_report, generate_country_brief
 from fetcher import get_all_news
 
 load_dotenv()
@@ -726,6 +726,47 @@ async def subscribe(req: SubscribeRequest):
     return JSONResponse(content={
         "ok":      True,
         "message": f"Subscribed! You'll be alerted when tension exceeds {req.threshold}/100.",
+    })
+
+
+@app.get("/api/country")
+async def get_country_intel(name: str):
+    """Return filtered articles + Claude summary for a country/actor."""
+    data      = _cache.get("data", {})
+    articles  = data.get("articles", [])
+
+    name_lower = name.lower()
+    matching = [
+        a for a in articles
+        if name_lower in a.get("title",   "").lower()
+        or any(name_lower in act.lower() for act in a.get("actors", []))
+        or name_lower in a.get("region",  "").lower()
+        or name_lower in a.get("insight", "").lower()
+    ]
+
+    if matching:
+        severities = [a.get("severity", 1)    for a in matching]
+        sentiments = [a.get("sentiment", "Neutral") for a in matching]
+        categories = [a.get("category",  "Other")   for a in matching]
+        avg_severity       = sum(severities) / len(severities)
+        dominant_sentiment = max(set(sentiments), key=sentiments.count)
+        dominant_category  = max(set(categories), key=categories.count)
+    else:
+        avg_severity       = 0.0
+        dominant_sentiment = "Neutral"
+        dominant_category  = "Other"
+
+    loop    = asyncio.get_event_loop()
+    summary = await loop.run_in_executor(None, generate_country_brief, name, matching[:8])
+
+    return JSONResponse(content={
+        "name":               name,
+        "article_count":      len(matching),
+        "avg_severity":       round(avg_severity, 1),
+        "dominant_sentiment": dominant_sentiment,
+        "dominant_category":  dominant_category,
+        "summary":            summary,
+        "articles":           matching[:10],
     })
 
 

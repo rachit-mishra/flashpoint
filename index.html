@@ -1149,6 +1149,112 @@
       border-color: var(--border-hover);
       color: var(--text-2);
     }
+
+    /* ── Country Deep-Dive Panel ─────────────────────────────────────── */
+    #country-overlay {
+      position: fixed; inset: 0;
+      background: rgba(8,12,20,0.72);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 900;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    #country-overlay.open { opacity: 1; pointer-events: all; }
+
+    #country-panel {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(460px, 100vw);
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 901;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(.22,.68,0,1.2);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #country-panel.open { transform: translateX(0); }
+
+    .cp-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 10px;
+      flex-shrink: 0;
+    }
+    .cp-header-info { flex: 1; min-width: 0; }
+    .cp-name {
+      font-size: 17px; font-weight: 700; letter-spacing: 0.04em;
+      color: var(--text-1); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .cp-badges { margin-top: 6px; display: flex; gap: 5px; flex-wrap: wrap; }
+    .cp-close {
+      flex-shrink: 0; background: none; border: none;
+      color: var(--text-3); cursor: pointer; font-size: 16px;
+      padding: 3px 7px; border-radius: 5px; line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+    .cp-close:hover { color: var(--text-1); background: rgba(255,255,255,0.06); }
+
+    .cp-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+
+    .cp-section { margin-bottom: 22px; }
+    .cp-section-label {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+    .cp-summary {
+      font-size: 13px; line-height: 1.78; color: var(--text-2);
+    }
+
+    .cp-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .cp-stat {
+      background: var(--surface-2); border-radius: var(--r-sm);
+      border: 1px solid var(--border);
+      padding: 10px 10px 8px; text-align: center;
+    }
+    .cp-stat-val {
+      font-family: var(--font-m); font-size: 19px; font-weight: 700;
+      color: var(--text-1); display: block; line-height: 1;
+    }
+    .cp-stat-key {
+      font-size: 9px; color: var(--text-3); margin-top: 5px;
+      letter-spacing: 0.1em; text-transform: uppercase; display: block;
+    }
+
+    .cp-article {
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 9px;
+    }
+    .cp-article:last-child { border-bottom: none; }
+    .cp-art-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 5px;
+    }
+    .cp-art-link {
+      font-size: 12px; line-height: 1.5; color: var(--text-1);
+      text-decoration: none; display: block;
+    }
+    .cp-art-link:hover { color: #3b82f6; }
+    .cp-art-meta {
+      font-size: 10px; color: var(--text-3); margin-top: 3px;
+    }
+    .cp-art-insight {
+      font-size: 11px; color: var(--text-3);
+      font-style: italic; margin-top: 3px; line-height: 1.5;
+    }
+
+    /* Clickable actor tags (in flashpoints + feed) */
+    .actor-chip {
+      display: inline-block; cursor: pointer;
+      color: var(--text-2); font-size: inherit;
+      border-bottom: 1px dotted var(--text-3);
+      transition: color 0.15s, border-color 0.15s;
+      line-height: inherit;
+    }
+    .actor-chip:hover { color: #3b82f6; border-color: #3b82f6; }
   </style>
 </head>
 
@@ -1495,6 +1601,51 @@
 
 </div><!-- /.shell -->
 
+<!-- ── COUNTRY DEEP-DIVE PANEL (outside .shell so it overlays full viewport) ── -->
+<div id="country-overlay" onclick="closeCountryPanel()"></div>
+<div id="country-panel" role="dialog" aria-modal="true" aria-label="Country Intelligence Panel">
+  <div class="cp-header">
+    <div class="cp-header-info">
+      <div class="cp-name" id="cp-name"></div>
+      <div class="cp-badges" id="cp-badges"></div>
+    </div>
+    <button class="cp-close" onclick="closeCountryPanel()" title="Close">✕</button>
+  </div>
+  <div class="cp-body">
+    <div id="cp-loading" style="display:none;padding:48px 0;text-align:center;
+      color:var(--text-3);font-family:var(--font-m);font-size:11px;letter-spacing:0.1em;">
+      GATHERING INTELLIGENCE&hellip;
+    </div>
+    <div id="cp-content" style="display:none;">
+      <div class="cp-section">
+        <div class="cp-section-label">Intelligence Assessment</div>
+        <div id="cp-summary" class="cp-summary"></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-section-label">Signal Metrics</div>
+        <div class="cp-stats">
+          <div class="cp-stat">
+            <span id="cp-count" class="cp-stat-val">—</span>
+            <span class="cp-stat-key">Articles</span>
+          </div>
+          <div class="cp-stat">
+            <span id="cp-sev" class="cp-stat-val">—</span>
+            <span class="cp-stat-key">Avg Severity</span>
+          </div>
+          <div class="cp-stat">
+            <span id="cp-cat" class="cp-stat-val" style="font-size:11px;margin-top:4px;">—</span>
+            <span class="cp-stat-key">Category</span>
+          </div>
+        </div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-section-label">Recent Intelligence</div>
+        <div id="cp-articles"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── THIRD-PARTY LIBS ───────────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -1650,9 +1801,6 @@ function renderFlashpoints(fps) {
     const dotHex  = SEV_HEX[sev]  || '#888';
     const dotRgb  = SEV_RGB[sev]  || '136,136,136';
     const sc      = SENT_CLR[fp.sentiment] || SENT_CLR['Neutral'];
-    const actors  = Array.isArray(fp.actors) && fp.actors.length
-                    ? fp.actors.join(' · ') : 'Unspecified';
-
     const a = document.createElement('a');
     a.className = 'fp-item';
     a.href      = fp.url || '#';
@@ -1675,8 +1823,8 @@ function renderFlashpoints(fps) {
     region.textContent = fp.region;
 
     const act = document.createElement('div');
-    act.className   = 'fp-actors';
-    act.textContent = actors;
+    act.className = 'fp-actors';
+    act.innerHTML = _actorChips(fp.actors);
 
     const ins = document.createElement('div');
     ins.className   = 'fp-insight';
@@ -2545,14 +2693,15 @@ function _buildFeedCard(a) {
   const sc     = SENT_CLR[a.sentiment]  || SENT_CLR['Neutral'];
   const sev    = a.severity || 1;
   const sevDot = '●'.repeat(sev) + '○'.repeat(5 - sev);
-  const actors = Array.isArray(a.actors) && a.actors.length
-                 ? a.actors.join(' · ') : '';
   const hasUrl = a.url && a.url !== '#';
 
   const card = document.createElement('a');
   card.className = 'feed-card';
   card.href      = hasUrl ? a.url : '#';
   if (hasUrl) { card.target = '_blank'; card.rel = 'noopener noreferrer'; }
+
+  const actorHtml = Array.isArray(a.actors) && a.actors.length
+    ? `<span style="color:var(--text-3);">·</span><span>${_actorChips(a.actors)}</span>` : '';
 
   card.innerHTML = `
     <div class="feed-card-top">
@@ -2573,7 +2722,7 @@ function _buildFeedCard(a) {
     <div class="feed-card-foot">
       <div class="feed-meta">
         <span>${a.source || ''}</span>
-        ${actors ? `<span style="color:var(--text-3);">·</span><span>${actors}</span>` : ''}
+        ${actorHtml}
       </div>
       ${hasUrl ? `<span class="feed-read-link">Read →</span>` : ''}
     </div>`;
@@ -2688,6 +2837,101 @@ load();
 fetchHistory();           // load chart immediately without waiting for /api/pulse
 fetchRegionalHistory();   // seed sparklines on first render
 setInterval(load, 5 * 60 * 1000);
+
+/* ── Country Deep-Dive Panel ─────────────────────────────────────────── */
+const _CP_SEV_COLORS = ['','#22c55e','#3b82f6','#f59e0b','#ef4444','#dc2626'];
+const _CP_SENT_COLOR = {
+  'Escalating':   '#ef4444',
+  'De-escalating':'#22c55e',
+  'Uncertain':    '#f59e0b',
+  'Neutral':      '#3b82f6',
+};
+
+function openCountryPanel(name) {
+  document.getElementById('cp-name').textContent    = name;
+  document.getElementById('cp-badges').innerHTML    = '';
+  document.getElementById('cp-content').style.display  = 'none';
+  document.getElementById('cp-loading').style.display  = 'block';
+  document.getElementById('country-overlay').classList.add('open');
+  document.getElementById('country-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  _fetchCountryData(name);
+}
+
+function closeCountryPanel() {
+  document.getElementById('country-overlay').classList.remove('open');
+  document.getElementById('country-panel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCountryPanel(); });
+
+async function _fetchCountryData(name) {
+  try {
+    const res = await fetch(`/api/country?name=${encodeURIComponent(name)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _renderCountryPanel(await res.json());
+  } catch (e) {
+    document.getElementById('cp-loading').textContent = 'Failed to load intelligence data.';
+  }
+}
+
+function _renderCountryPanel(d) {
+  document.getElementById('cp-loading').style.display  = 'none';
+  document.getElementById('cp-content').style.display  = 'block';
+
+  // Sentiment + category badges
+  const sentColor = _CP_SENT_COLOR[d.dominant_sentiment] || '#3b82f6';
+  document.getElementById('cp-badges').innerHTML = `
+    <span style="background:${sentColor}22;color:${sentColor};border:1px solid ${sentColor}44;
+      border-radius:999px;padding:2px 10px;font-size:10px;letter-spacing:0.12em;font-weight:600;">
+      ${(d.dominant_sentiment||'').toUpperCase()}
+    </span>
+    <span style="background:rgba(255,255,255,0.04);color:var(--text-2);
+      border:1px solid var(--border);border-radius:999px;padding:2px 10px;font-size:10px;">
+      ${d.dominant_category || ''}
+    </span>`;
+
+  // Summary
+  document.getElementById('cp-summary').textContent = d.summary || '—';
+
+  // Stats
+  document.getElementById('cp-count').textContent = d.article_count || 0;
+  const sevEl = document.getElementById('cp-sev');
+  sevEl.textContent  = d.avg_severity ? d.avg_severity.toFixed(1) : '—';
+  sevEl.style.color  = _CP_SEV_COLORS[Math.round(d.avg_severity)] || 'var(--text-1)';
+  document.getElementById('cp-cat').textContent = d.dominant_category || '—';
+
+  // Article list
+  const container = document.getElementById('cp-articles');
+  if (!d.articles || !d.articles.length) {
+    container.innerHTML = '<p style="color:var(--text-3);font-size:12px;">No recent articles found.</p>';
+    return;
+  }
+  container.innerHTML = d.articles.map(a => {
+    const dot  = _CP_SEV_COLORS[a.severity] || '#555';
+    const meta = [a.source, a.sentiment, a.category].filter(Boolean).join(' · ');
+    const ins  = (a.insight && a.insight !== 'Analysis unavailable.')
+                 ? `<div class="cp-art-insight">${a.insight}</div>` : '';
+    return `<div class="cp-article">
+      <div class="cp-art-dot" style="background:${dot};"></div>
+      <div style="flex:1;min-width:0;">
+        <a href="${a.url||'#'}" target="_blank" rel="noopener" class="cp-art-link">${a.title}</a>
+        <div class="cp-art-meta">${meta}</div>${ins}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Helper: render actor list as clickable chips (stops event bubbling from parent links)
+function _actorChips(actors) {
+  if (!Array.isArray(actors) || !actors.length) return 'Unspecified';
+  return actors.map(name =>
+    `<span class="actor-chip"
+       onclick="event.stopPropagation();event.preventDefault();openCountryPanel('${name.replace(/'/g,"\\'")}');"
+     >${name}</span>`
+  ).join('<span style="color:var(--text-3);margin:0 3px;">·</span>');
+}
 </script>
 </body>
 </html>

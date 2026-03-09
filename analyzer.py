@@ -135,6 +135,40 @@ def generate_situation_report(articles: list[dict], _retries: int = 3) -> str:
     return "Intelligence brief temporarily unavailable. Refreshing shortly."
 
 
+def generate_country_brief(name: str, articles: list[dict], _retries: int = 2) -> str:
+    """Generate a focused 2-sentence intelligence assessment for a country/actor."""
+    if not articles:
+        return f"No recent intelligence on {name} in the current news cycle."
+    headlines = "\n".join(f"- {a['title']}" for a in articles[:8])
+    for attempt in range(_retries):
+        try:
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=180,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"Based on these recent headlines involving {name}, write exactly 2 sentences: "
+                        f"(1) the current situation and (2) the key risk or trend to watch. "
+                        f"Be direct and analytical. No preamble.\n\nHeadlines:\n{headlines}"
+                    )
+                }],
+            )
+            return message.content[0].text.strip()
+        except anthropic.APIStatusError as e:
+            if e.status_code in (400, 402, 403) and (
+                "credit" in str(e).lower() or e.status_code in (402, 403)
+            ):
+                return "Intelligence summary unavailable — API credits exhausted."
+            elif e.status_code == 529 and attempt < _retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                return "Intelligence summary temporarily unavailable."
+        except Exception:
+            return "Intelligence summary temporarily unavailable."
+    return "Intelligence summary temporarily unavailable."
+
+
 def _fallback() -> dict:
     return {
         "category": "Other",
