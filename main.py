@@ -738,6 +738,116 @@ async def serve_intel():
     )
 
 
+@app.get("/share", response_class=HTMLResponse)
+async def serve_share(name: str = ""):
+    """Serve shareable intel card with server-injected OG tags for link previews."""
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    template = (BASE_DIR / "share.html").read_text(encoding="utf-8")
+
+    if not name:
+        return HTMLResponse(content=template, status_code=200)
+
+    # Build OG metadata from cached data (no API call — instant)
+    data     = _cache.get("data", {})
+    articles = data.get("articles", [])
+    name_lower = name.lower()
+    matching = [
+        a for a in articles
+        if name_lower in a.get("title",   "").lower()
+        or any(name_lower in act.lower() for act in a.get("actors", []))
+        or name_lower in a.get("region",  "").lower()
+        or name_lower in a.get("insight", "").lower()
+    ]
+
+    if matching:
+        avg_sev  = sum(a.get("severity", 1) for a in matching) / len(matching)
+        sev_round = round(avg_sev)
+        sents    = [a.get("sentiment", "Neutral") for a in matching]
+        cats     = [a.get("category", "Other") for a in matching]
+        dominant_sent = max(set(sents), key=sents.count)
+        dominant_cat  = max(set(cats), key=cats.count)
+    else:
+        avg_sev, sev_round = 0, 0
+        dominant_sent, dominant_cat = "Neutral", "Other"
+
+    og_title = f"{name} — {dominant_sent} · {dominant_cat} | FLASHPOINT"
+    og_desc  = f"Severity {avg_sev:.1f}/5 across {len(matching)} articles. {dominant_sent} · {dominant_cat}."
+    if matching and matching[0].get("insight"):
+        og_desc = matching[0]["insight"]
+    og_image = f"{base_url}/og-card.svg?name={name}&sev={sev_round}&sent={dominant_sent}"
+    og_url   = f"{base_url}/share?name={name}"
+
+    html = (template
+        .replace("{{OG_TITLE}}", og_title)
+        .replace("{{OG_DESC}}",  og_desc)
+        .replace("{{OG_IMAGE}}", og_image)
+        .replace("{{OG_URL}}",   og_url))
+
+    return HTMLResponse(content=html, status_code=200)
+
+
+@app.get("/og-card.svg")
+async def serve_og_card(name: str = "FLASHPOINT", sev: int = 0, sent: str = "Neutral"):
+    """Dynamic SVG used as og:image — renders as a visual card in link previews."""
+    sev_colors = {0: '#4b5563', 1: '#22c55e', 2: '#3b82f6', 3: '#f59e0b', 4: '#ef4444', 5: '#dc2626'}
+    sent_colors = {
+        'Escalating': '#ef4444', 'De-escalating': '#22c55e',
+        'Uncertain': '#f59e0b', 'Neutral': '#3b82f6',
+    }
+    sc = sev_colors.get(sev, '#4b5563')
+    stc = sent_colors.get(sent, '#3b82f6')
+    dots = '●' * sev + '○' * (5 - sev)
+
+    # Escape name for SVG
+    import html as _html
+    safe_name = _html.escape(name)
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#080c14"/>
+  <rect x="0" y="0" width="1200" height="4" fill="{sc}"/>
+
+  <!-- Logo -->
+  <rect x="60" y="48" width="40" height="40" rx="10" fill="#b91c1c"/>
+  <text x="80" y="78" font-size="24" text-anchor="middle" font-family="Arial">⚡</text>
+  <text x="112" y="76" font-size="16" font-weight="700" fill="#eef2ff"
+    font-family="'Space Grotesk',Arial,sans-serif" letter-spacing="3">FLASHPOINT</text>
+  <text x="260" y="76" font-size="10" fill="#4b5563"
+    font-family="'Space Mono',monospace" letter-spacing="2">INTELLIGENCE CARD</text>
+
+  <!-- Divider -->
+  <line x1="60" y1="110" x2="1140" y2="110" stroke="#1e2a3a" stroke-width="1"/>
+
+  <!-- Severity ring -->
+  <circle cx="120" cy="240" r="58" fill="none" stroke="{sc}" stroke-width="4"/>
+  <text x="120" y="250" font-size="28" font-weight="700" fill="{sc}" text-anchor="middle"
+    font-family="'Space Mono',monospace">{sev}.0</text>
+
+  <!-- Actor name -->
+  <text x="210" y="220" font-size="44" font-weight="700" fill="#eef2ff"
+    font-family="'Space Grotesk',Arial,sans-serif">{safe_name}</text>
+
+  <!-- Badges -->
+  <rect x="210" y="240" width="{len(sent)*10 + 30}" height="26" rx="13" fill="{stc}22" stroke="{stc}66" stroke-width="1"/>
+  <text x="{210 + (len(sent)*10 + 30)//2}" y="258" font-size="11" font-weight="600" fill="{stc}"
+    text-anchor="middle" font-family="'Space Mono',monospace" letter-spacing="2">{sent.upper()}</text>
+
+  <!-- Severity dots -->
+  <text x="60" y="380" font-size="9" fill="#4b5563"
+    font-family="'Space Mono',monospace" letter-spacing="3">SEVERITY</text>
+  <text x="60" y="420" font-size="32" fill="{sc}" font-family="monospace" letter-spacing="4">{dots}</text>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="540" width="1200" height="90" fill="#0d1220"/>
+  <text x="60" y="590" font-size="12" fill="#4b5563"
+    font-family="'Space Mono',monospace" letter-spacing="2">flashpoint.watch/share?name={safe_name}</text>
+  <text x="1140" y="590" font-size="12" fill="#4b5563" text-anchor="end"
+    font-family="'Space Mono',monospace" letter-spacing="2">REAL-TIME GEOPOLITICAL INTELLIGENCE</text>
+</svg>"""
+    from fastapi.responses import Response
+    return Response(content=svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=300"})
+
+
 @app.get("/api/pulse")
 async def get_pulse():
     if "data" not in _cache:

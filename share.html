@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Dynamic OG tags injected by FastAPI -->
+  <title>{{OG_TITLE}}</title>
+  <meta property="og:title"       content="{{OG_TITLE}}" />
+  <meta property="og:description" content="{{OG_DESC}}" />
+  <meta property="og:image"       content="{{OG_IMAGE}}" />
+  <meta property="og:url"         content="{{OG_URL}}" />
+  <meta property="og:type"        content="article" />
+  <meta property="og:site_name"   content="FLASHPOINT" />
+  <meta name="twitter:card"       content="summary_large_image" />
+  <meta name="twitter:title"      content="{{OG_TITLE}}" />
+  <meta name="twitter:description" content="{{OG_DESC}}" />
+  <meta name="twitter:image"      content="{{OG_IMAGE}}" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:        #080c14;
+      --surface:   #0d1220;
+      --surface-2: #111827;
+      --border:    rgba(255,255,255,0.055);
+      --text-1:    #eef2ff;
+      --text-2:    #8b95a8;
+      --text-3:    #4b5563;
+      --r: 12px;
+      --r-sm: 8px;
+      --font-d: 'Space Grotesk', system-ui, sans-serif;
+      --font-b: 'Inter', system-ui, sans-serif;
+      --font-m: 'Space Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      background: var(--bg); color: var(--text-1);
+      font-family: var(--font-b); font-size: 14px; line-height: 1.6;
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
+      display: flex; flex-direction: column;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    .sh-header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px; height: 52px;
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(8,12,20,0.92);
+      backdrop-filter: blur(12px);
+    }
+    .sh-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-d); font-weight: 700;
+      font-size: 13px; letter-spacing: 0.14em;
+    }
+    .sh-logo-icon {
+      width: 26px; height: 26px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; font-size: 13px;
+    }
+    .sh-nav-sep { width: 1px; height: 18px; background: var(--border); }
+    .sh-label {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.2em; color: var(--text-3);
+    }
+    .sh-cta {
+      margin-left: auto;
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.16em; color: var(--text-3);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 12px; transition: all 0.15s;
+    }
+    .sh-cta:hover { color: var(--text-1); border-color: rgba(255,255,255,0.11); }
+
+    /* Card */
+    .sh-shell { max-width: 680px; margin: 0 auto; padding: 36px 20px 48px; width: 100%; }
+
+    .sh-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+    .sh-card-accent {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-color, #ef4444), transparent);
+    }
+    .sh-card-body { padding: 28px 28px 24px; }
+
+    .sh-hero { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+    .sh-sev-ring {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 3px solid var(--accent-color, #ef4444);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .sh-sev-val {
+      font-family: var(--font-m); font-size: 18px; font-weight: 700;
+      color: var(--accent-color, #ef4444);
+    }
+    .sh-name {
+      font-family: var(--font-d); font-size: 26px; font-weight: 700;
+      letter-spacing: 0.02em; line-height: 1.2;
+    }
+    .sh-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+    .sh-badge {
+      display: inline-block; border-radius: 999px;
+      padding: 2px 10px; font-size: 10px;
+      letter-spacing: 0.12em; font-weight: 600;
+    }
+
+    .sh-divider {
+      height: 1px; background: var(--border); margin: 18px 0;
+    }
+
+    .sh-section-label {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+    .sh-summary {
+      font-size: 14px; line-height: 1.8; color: var(--text-2);
+      margin-bottom: 20px;
+    }
+
+    .sh-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      margin-bottom: 20px;
+    }
+    .sh-stat {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 12px 10px; text-align: center;
+    }
+    .sh-stat-val {
+      font-family: var(--font-m); font-size: 20px; font-weight: 700;
+      display: block; line-height: 1;
+    }
+    .sh-stat-key {
+      font-size: 9px; color: var(--text-3); margin-top: 5px;
+      letter-spacing: 0.1em; text-transform: uppercase; display: block;
+    }
+
+    .sh-art {
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      display: flex; gap: 9px; align-items: flex-start;
+    }
+    .sh-art:last-child { border-bottom: none; }
+    .sh-art-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 6px;
+    }
+    .sh-art-link {
+      font-size: 13px; line-height: 1.5; color: var(--text-1);
+      transition: color 0.15s; display: block;
+    }
+    .sh-art-link:hover { color: #3b82f6; }
+    .sh-art-meta { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+
+    /* Footer */
+    .sh-footer {
+      margin-top: 20px; text-align: center;
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.14em; color: var(--text-3);
+    }
+    .sh-footer a { color: #3b82f6; }
+
+    .sh-actions {
+      display: flex; gap: 10px; justify-content: center;
+      margin-top: 18px;
+    }
+    .sh-action-btn {
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.14em; color: var(--text-3);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 16px; cursor: pointer;
+      background: none; transition: all 0.15s;
+    }
+    .sh-action-btn:hover { color: var(--text-1); border-color: rgba(255,255,255,0.11); }
+    .sh-action-btn.primary {
+      background: #ef4444; color: #fff; border-color: #ef4444;
+    }
+    .sh-action-btn.primary:hover { background: #dc2626; }
+
+    /* Loading */
+    .sh-loading {
+      padding: 80px 0; text-align: center;
+      font-family: var(--font-m); font-size: 11px;
+      letter-spacing: 0.12em; color: var(--text-3);
+    }
+
+    @media (max-width: 520px) {
+      .sh-card-body { padding: 20px 18px; }
+      .sh-name { font-size: 22px; }
+      .sh-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .sh-stat { padding: 10px 6px; }
+      .sh-stat-val { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="sh-header">
+  <a href="/" class="sh-logo">
+    <div class="sh-logo-icon">⚡</div>
+    FLASHPOINT
+  </a>
+  <div class="sh-nav-sep"></div>
+  <span class="sh-label">INTELLIGENCE CARD</span>
+  <a href="/" class="sh-cta">LIVE DASHBOARD →</a>
+</header>
+
+<div class="sh-shell">
+  <div id="js-loading" class="sh-loading">LOADING INTELLIGENCE…</div>
+
+  <div id="js-card" style="display:none;">
+    <div class="sh-card">
+      <div class="sh-card-accent" id="js-accent"></div>
+      <div class="sh-card-body">
+        <div class="sh-hero">
+          <div class="sh-sev-ring" id="js-sev-ring">
+            <span class="sh-sev-val" id="js-sev-val">—</span>
+          </div>
+          <div>
+            <div class="sh-name" id="js-name"></div>
+            <div class="sh-badges" id="js-badges"></div>
+          </div>
+        </div>
+
+        <div class="sh-section-label">Intelligence Assessment</div>
+        <div class="sh-summary" id="js-summary"></div>
+
+        <div class="sh-stats">
+          <div class="sh-stat">
+            <span id="js-count" class="sh-stat-val">—</span>
+            <span class="sh-stat-key">Articles</span>
+          </div>
+          <div class="sh-stat">
+            <span id="js-avg" class="sh-stat-val">—</span>
+            <span class="sh-stat-key">Avg Severity</span>
+          </div>
+          <div class="sh-stat">
+            <span id="js-cat" class="sh-stat-val" style="font-size:12px;margin-top:4px;">—</span>
+            <span class="sh-stat-key">Category</span>
+          </div>
+        </div>
+
+        <div class="sh-divider"></div>
+        <div class="sh-section-label">Recent Intelligence</div>
+        <div id="js-articles"></div>
+      </div>
+    </div>
+
+    <div class="sh-actions">
+      <button class="sh-action-btn" onclick="copyLink()">COPY LINK</button>
+      <a href="/" class="sh-action-btn primary">VIEW LIVE DASHBOARD →</a>
+    </div>
+
+    <div class="sh-footer">
+      <span id="js-ts"></span> · FLASHPOINT · <a href="/">flashpoint.watch</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEV_COLORS = ['','#22c55e','#3b82f6','#f59e0b','#ef4444','#dc2626'];
+const SENT_COLOR = {
+  'Escalating':'#ef4444','De-escalating':'#22c55e',
+  'Uncertain':'#f59e0b','Neutral':'#3b82f6'
+};
+
+const params = new URLSearchParams(window.location.search);
+const NAME   = params.get('name');
+
+if (!NAME) {
+  document.getElementById('js-loading').textContent = 'No actor specified. Use ?name=Iran';
+} else {
+  loadCard(NAME);
+}
+
+async function loadCard(name) {
+  try {
+    const res = await fetch(`/api/country?name=${encodeURIComponent(name)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    render(d);
+  } catch (e) {
+    document.getElementById('js-loading').textContent = 'Failed to load intelligence data.';
+  }
+}
+
+function render(d) {
+  document.getElementById('js-loading').style.display = 'none';
+  document.getElementById('js-card').style.display = 'block';
+
+  const sevRound = Math.round(d.avg_severity || 0);
+  const accentColor = SEV_COLORS[sevRound] || '#3b82f6';
+
+  // Accent bar color
+  document.getElementById('js-accent').style.background =
+    `linear-gradient(90deg, ${accentColor}, transparent)`;
+
+  // Severity ring
+  const ring = document.getElementById('js-sev-ring');
+  ring.style.borderColor = accentColor;
+  ring.style.setProperty('--accent-color', accentColor);
+  document.getElementById('js-sev-val').style.color = accentColor;
+  document.getElementById('js-sev-val').textContent = d.avg_severity ? d.avg_severity.toFixed(1) : '—';
+
+  // Name + badges
+  document.getElementById('js-name').textContent = d.name;
+  const sc = SENT_COLOR[d.dominant_sentiment] || '#3b82f6';
+  document.getElementById('js-badges').innerHTML = `
+    <span class="sh-badge"
+      style="background:${sc}22;color:${sc};border:1px solid ${sc}44;">
+      ${(d.dominant_sentiment||'').toUpperCase()}
+    </span>
+    <span class="sh-badge"
+      style="background:rgba(255,255,255,0.04);color:var(--text-2);border:1px solid var(--border);">
+      ${d.dominant_category || ''}
+    </span>`;
+
+  // Summary
+  document.getElementById('js-summary').textContent = d.summary || '—';
+
+  // Stats
+  document.getElementById('js-count').textContent = d.article_count || 0;
+  const avgEl = document.getElementById('js-avg');
+  avgEl.textContent = d.avg_severity ? d.avg_severity.toFixed(1) : '—';
+  avgEl.style.color = accentColor;
+  document.getElementById('js-cat').textContent = d.dominant_category || '—';
+
+  // Articles
+  const container = document.getElementById('js-articles');
+  if (!d.articles || !d.articles.length) {
+    container.innerHTML = '<p style="color:var(--text-3);font-size:12px;">No articles found.</p>';
+  } else {
+    container.innerHTML = d.articles.slice(0, 5).map(a => {
+      const dot  = SEV_COLORS[a.severity] || '#555';
+      const meta = [a.source, a.sentiment].filter(Boolean).join(' · ');
+      return `<div class="sh-art">
+        <div class="sh-art-dot" style="background:${dot};"></div>
+        <div style="flex:1;min-width:0;">
+          <a href="${a.url||'#'}" target="_blank" rel="noopener" class="sh-art-link">${a.title}</a>
+          <div class="sh-art-meta">${meta}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Timestamp
+  document.getElementById('js-ts').textContent =
+    new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btn = document.querySelector('.sh-action-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'COPIED!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+</script>
+</body>
+</html>

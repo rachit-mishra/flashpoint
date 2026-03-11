@@ -275,9 +275,19 @@
   <div id="view-detail" style="display:none;">
     <a href="/intel" class="detail-back">← All Actors</a>
 
-    <div class="detail-hero">
-      <div class="detail-name" id="js-d-name"></div>
-      <div class="detail-badges" id="js-d-badges"></div>
+    <div class="detail-hero" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+      <div>
+        <div class="detail-name" id="js-d-name"></div>
+        <div class="detail-badges" id="js-d-badges"></div>
+      </div>
+      <a id="js-d-share" href="/share" target="_blank"
+        style="flex-shrink:0;font-family:var(--font-m);font-size:9px;
+          letter-spacing:0.16em;color:#ef4444;border:1px solid #ef444444;
+          border-radius:7px;padding:7px 14px;transition:all 0.15s;margin-top:6px;"
+        onmouseover="this.style.color='#fff';this.style.background='#ef4444';this.style.borderColor='#ef4444';"
+        onmouseout="this.style.color='#ef4444';this.style.background='none';this.style.borderColor='#ef444444';">
+        SHARE ↗
+      </a>
     </div>
 
     <div id="js-d-loading" class="state-msg">GATHERING INTELLIGENCE…</div>
@@ -344,6 +354,7 @@ if (NAME) {
   document.getElementById('view-detail').style.display   = 'block';
   document.getElementById('js-page-title').textContent   = NAME.toUpperCase();
   document.getElementById('js-d-name').textContent       = NAME;
+  document.getElementById('js-d-share').href             = `/share?name=${encodeURIComponent(NAME)}`;
   loadDetail(NAME);
 } else {
   document.getElementById('view-explorer').style.display = 'block';

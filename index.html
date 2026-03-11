@@ -1649,14 +1649,22 @@
         <div class="cp-section-label">Recent Intelligence</div>
         <div id="cp-articles"></div>
       </div>
-      <div style="padding:0 0 18px;text-align:center;">
+      <div style="padding:0 0 18px;text-align:center;display:flex;gap:8px;justify-content:center;">
         <a id="cp-fullpage-link" href="/intel" target="_blank"
           style="display:inline-block;font-family:var(--font-m);font-size:9px;
             letter-spacing:0.18em;color:var(--text-3);border:1px solid var(--border);
-            border-radius:7px;padding:8px 20px;transition:color 0.15s,border-color 0.15s;"
+            border-radius:7px;padding:8px 16px;transition:color 0.15s,border-color 0.15s;"
           onmouseover="this.style.color='var(--text-1)';this.style.borderColor='var(--border-hover)';"
           onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)';">
-          VIEW FULL INTEL PAGE →
+          FULL INTEL →
+        </a>
+        <a id="cp-share-link" href="/share" target="_blank"
+          style="display:inline-block;font-family:var(--font-m);font-size:9px;
+            letter-spacing:0.18em;color:#ef4444;border:1px solid #ef444444;
+            border-radius:7px;padding:8px 16px;transition:color 0.15s,border-color 0.15s;"
+          onmouseover="this.style.color='#fff';this.style.borderColor='#ef4444';"
+          onmouseout="this.style.color='#ef4444';this.style.borderColor='#ef444444';">
+          SHARE ↗
         </a>
       </div>
     </div>
@@ -2870,6 +2878,7 @@ function openCountryPanel(name) {
   document.getElementById('cp-content').style.display   = 'none';
   document.getElementById('cp-loading').style.display   = 'block';
   document.getElementById('cp-fullpage-link').href      = `/intel?name=${encodeURIComponent(name)}`;
+  document.getElementById('cp-share-link').href         = `/share?name=${encodeURIComponent(name)}`;
   document.getElementById('country-overlay').classList.add('open');
   document.getElementById('country-panel').classList.add('open');
   document.body.style.overflow = 'hidden';
