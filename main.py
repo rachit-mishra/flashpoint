@@ -774,7 +774,7 @@ async def serve_share(name: str = ""):
     og_desc  = f"Severity {avg_sev:.1f}/5 across {len(matching)} articles. {dominant_sent} · {dominant_cat}."
     if matching and matching[0].get("insight"):
         og_desc = matching[0]["insight"]
-    og_image = f"{base_url}/og-card.svg?name={name}&sev={sev_round}&sent={dominant_sent}"
+    og_image = f"{base_url}/og-card.png?name={name}&sev={sev_round}&sent={dominant_sent}"
     og_url   = f"{base_url}/share?name={name}"
 
     html = (template
@@ -786,65 +786,95 @@ async def serve_share(name: str = ""):
     return HTMLResponse(content=html, status_code=200)
 
 
-@app.get("/og-card.svg")
+@app.get("/og-card.png")
 async def serve_og_card(name: str = "FLASHPOINT", sev: int = 0, sent: str = "Neutral"):
-    """Dynamic SVG used as og:image — renders as a visual card in link previews."""
-    sev_colors = {0: '#4b5563', 1: '#22c55e', 2: '#3b82f6', 3: '#f59e0b', 4: '#ef4444', 5: '#dc2626'}
-    sent_colors = {
-        'Escalating': '#ef4444', 'De-escalating': '#22c55e',
-        'Uncertain': '#f59e0b', 'Neutral': '#3b82f6',
+    """Dynamic PNG used as og:image — renders as a visual card in link previews."""
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+
+    W, H = 1200, 630
+    BG     = (8, 12, 20)
+    BAR_BG = (13, 18, 32)
+    WHITE  = (238, 242, 255)
+    MUTED  = (75, 85, 99)
+
+    sev_colors = {
+        0: (75,85,99), 1: (34,197,94), 2: (59,130,246),
+        3: (245,158,11), 4: (239,68,68), 5: (220,38,38),
     }
-    sc = sev_colors.get(sev, '#4b5563')
-    stc = sent_colors.get(sent, '#3b82f6')
-    dots = '●' * sev + '○' * (5 - sev)
+    sent_colors = {
+        'Escalating': (239,68,68), 'De-escalating': (34,197,94),
+        'Uncertain': (245,158,11), 'Neutral': (59,130,246),
+    }
+    sc  = sev_colors.get(sev, (75,85,99))
+    stc = sent_colors.get(sent, (59,130,246))
 
-    # Escape name for SVG
-    import html as _html
-    safe_name = _html.escape(name)
+    img  = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
 
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#080c14"/>
-  <rect x="0" y="0" width="1200" height="4" fill="{sc}"/>
+    # Use DejaVu (available on most Linux systems incl Railway)
+    try:
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+        label_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13)
+        logo_font  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+        sev_font   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+    except OSError:
+        title_font = label_font = small_font = logo_font = sev_font = ImageFont.load_default()
 
-  <!-- Logo -->
-  <rect x="60" y="48" width="40" height="40" rx="10" fill="#b91c1c"/>
-  <text x="80" y="78" font-size="24" text-anchor="middle" font-family="Arial">⚡</text>
-  <text x="112" y="76" font-size="16" font-weight="700" fill="#eef2ff"
-    font-family="'Space Grotesk',Arial,sans-serif" letter-spacing="3">FLASHPOINT</text>
-  <text x="260" y="76" font-size="10" fill="#4b5563"
-    font-family="'Space Mono',monospace" letter-spacing="2">INTELLIGENCE CARD</text>
+    # Top accent bar
+    draw.rectangle([0, 0, W, 5], fill=sc)
 
-  <!-- Divider -->
-  <line x1="60" y1="110" x2="1140" y2="110" stroke="#1e2a3a" stroke-width="1"/>
+    # Logo area
+    draw.rounded_rectangle([60, 44, 100, 84], radius=8, fill=(185, 28, 28))
+    draw.text((112, 52), "FLASHPOINT", fill=WHITE, font=logo_font)
+    draw.text((310, 58), "INTELLIGENCE CARD", fill=MUTED, font=small_font)
 
-  <!-- Severity ring -->
-  <circle cx="120" cy="240" r="58" fill="none" stroke="{sc}" stroke-width="4"/>
-  <text x="120" y="250" font-size="28" font-weight="700" fill="{sc}" text-anchor="middle"
-    font-family="'Space Mono',monospace">{sev}.0</text>
+    # Divider
+    draw.line([60, 110, 1140, 110], fill=(30, 42, 58), width=1)
 
-  <!-- Actor name -->
-  <text x="210" y="220" font-size="44" font-weight="700" fill="#eef2ff"
-    font-family="'Space Grotesk',Arial,sans-serif">{safe_name}</text>
+    # Severity ring
+    cx, cy, r = 120, 240, 56
+    draw.ellipse([cx-r, cy-r, cx+r, cy+r], outline=sc, width=4)
+    sev_text = f"{sev}.0"
+    bb = draw.textbbox((0, 0), sev_text, font=sev_font)
+    tw, th = bb[2] - bb[0], bb[3] - bb[1]
+    draw.text((cx - tw//2, cy - th//2 - 4), sev_text, fill=sc, font=sev_font)
 
-  <!-- Badges -->
-  <rect x="210" y="240" width="{len(sent)*10 + 30}" height="26" rx="13" fill="{stc}22" stroke="{stc}66" stroke-width="1"/>
-  <text x="{210 + (len(sent)*10 + 30)//2}" y="258" font-size="11" font-weight="600" fill="{stc}"
-    text-anchor="middle" font-family="'Space Mono',monospace" letter-spacing="2">{sent.upper()}</text>
+    # Actor name
+    draw.text((210, 200), name, fill=WHITE, font=title_font)
 
-  <!-- Severity dots -->
-  <text x="60" y="380" font-size="9" fill="#4b5563"
-    font-family="'Space Mono',monospace" letter-spacing="3">SEVERITY</text>
-  <text x="60" y="420" font-size="32" fill="{sc}" font-family="monospace" letter-spacing="4">{dots}</text>
+    # Sentiment badge
+    badge_text = sent.upper()
+    bb = draw.textbbox((0, 0), badge_text, font=small_font)
+    bw = bb[2] - bb[0] + 28
+    bx, by = 210, 265
+    badge_bg = (stc[0]//8, stc[1]//8, stc[2]//8)
+    draw.rounded_rectangle([bx, by, bx+bw, by+26], radius=13, fill=badge_bg, outline=stc)
+    draw.text((bx + 14, by + 5), badge_text, fill=stc, font=small_font)
 
-  <!-- Bottom bar -->
-  <rect x="0" y="540" width="1200" height="90" fill="#0d1220"/>
-  <text x="60" y="590" font-size="12" fill="#4b5563"
-    font-family="'Space Mono',monospace" letter-spacing="2">flashpoint.watch/share?name={safe_name}</text>
-  <text x="1140" y="590" font-size="12" fill="#4b5563" text-anchor="end"
-    font-family="'Space Mono',monospace" letter-spacing="2">REAL-TIME GEOPOLITICAL INTELLIGENCE</text>
-</svg>"""
+    # Severity dots
+    draw.text((60, 350), "SEVERITY", fill=MUTED, font=small_font)
+    dot_x = 60
+    for i in range(5):
+        color = sc if i < sev else (40, 50, 65)
+        draw.ellipse([dot_x, 380, dot_x+24, 404], fill=color)
+        dot_x += 34
+
+    # Bottom bar
+    draw.rectangle([0, 540, W, H], fill=BAR_BG)
+    draw.text((60, 575), f"flashpoint.watch/share?name={name}", fill=MUTED, font=small_font)
+    rt = "REAL-TIME GEOPOLITICAL INTELLIGENCE"
+    rb = draw.textbbox((0, 0), rt, font=small_font)
+    draw.text((1140 - (rb[2]-rb[0]), 575), rt, fill=MUTED, font=small_font)
+
+    # Export PNG
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    buf.seek(0)
+
     from fastapi.responses import Response
-    return Response(content=svg, media_type="image/svg+xml",
+    return Response(content=buf.getvalue(), media_type="image/png",
                     headers={"Cache-Control": "public, max-age=300"})
 
 
