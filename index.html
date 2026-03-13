@@ -110,6 +110,42 @@
       color: var(--text-3);
     }
 
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .header-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-m);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #f87171;
+      text-decoration: none;
+      padding: 7px 16px;
+      border-radius: 7px;
+      border: 1px solid rgba(239,68,68,0.3);
+      background: rgba(239,68,68,0.06);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .header-nav-link:hover {
+      background: rgba(239,68,68,0.13);
+      border-color: rgba(239,68,68,0.55);
+      color: #fca5a5;
+    }
+
+    .header-nav-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #ef4444;
+      flex-shrink: 0;
+    }
+
     .header-meta {
       display: flex;
       align-items: center;
@@ -1281,19 +1317,19 @@
       </div>
     </div>
 
+    <nav class="header-nav">
+      <a href="/intel" class="header-nav-link">
+        <span class="header-nav-dot"></span>
+        INTELLIGENCE EXPLORER
+      </a>
+    </nav>
+
     <div class="header-meta">
       <div class="live-pill">
         <div class="live-dot" id="js-live-dot"></div>
         <span class="live-text">LIVE</span>
       </div>
       <div class="header-ts" id="js-ts">—</div>
-      <a href="/intel" style="font-family:var(--font-m);font-size:9px;letter-spacing:0.18em;
-        color:var(--text-3);border:1px solid var(--border);border-radius:6px;
-        padding:5px 10px;transition:color 0.15s,border-color 0.15s;"
-        onmouseover="this.style.color='var(--text-1)';this.style.borderColor='var(--border-hover)';"
-        onmouseout="this.style.color='var(--text-3)';this.style.borderColor='var(--border)';">
-        INTEL →
-      </a>
     </div>
   </header>
 

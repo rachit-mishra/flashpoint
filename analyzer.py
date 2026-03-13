@@ -139,24 +139,28 @@ def generate_country_brief(name: str, articles: list[dict], _retries: int = 2) -
     """Generate a focused 2-sentence intelligence assessment for a country/actor."""
     if not articles:
         return f"No recent intelligence on {name} in the current news cycle."
-    headlines = "\n".join(f"- {a['title']}" for a in articles[:8])
+    headlines = "\n".join(
+        f"- {a['title']}" for a in articles[:8] if a.get("title")
+    )
+    if not headlines:
+        return f"No recent intelligence on {name} in the current news cycle."
     for attempt in range(_retries):
         try:
             message = client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=180,
                 system=(
-                    "You are a geopolitical intelligence analyst. "
-                    "The headlines provided are real, current news items extracted from live sources. "
-                    "Analyze them directly. Never say you lack access to real-time information — "
-                    "the data is given to you. Write in present tense, analytically, no hedging."
+                    "You are a geopolitical intelligence analyst writing for a real-time intelligence dashboard. "
+                    "You will always receive real, current headlines to analyze — never ask for clarification or more data. "
+                    "Respond ONLY with exactly 2 analytical sentences in present tense. "
+                    "Sentence 1: what is happening now. Sentence 2: the key risk or trend to watch. "
+                    "No preamble, no meta-commentary, no questions. Just the 2 sentences."
                 ),
                 messages=[{
                     "role": "user",
                     "content": (
-                        f"These headlines cover {name}. Write exactly 2 sentences: "
-                        f"(1) current situation summary, (2) key risk or trend to watch. "
-                        f"No preamble.\n\nHeadlines:\n{headlines}"
+                        f"Current headlines about {name}:\n\n{headlines}\n\n"
+                        f"Write your 2-sentence intelligence assessment now."
                     )
                 }],
             )
