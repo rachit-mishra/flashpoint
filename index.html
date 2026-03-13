@@ -2044,15 +2044,24 @@ function renderHistoryChart(readings) {
 
   const W   = container.offsetWidth || 800;
   const H   = 148;
-  const PAD = { t: 12, r: 8, b: 28, l: 8 };
+  const PAD = { t: 12, r: 8, b: 28, l: 34 };  // left pad for y-axis labels
   const cW  = W  - PAD.l - PAD.r;
   const cH  = H  - PAD.t - PAD.b;
   const n   = readings.length;
 
-  const toX = i => PAD.l + (i / Math.max(n - 1, 1)) * cW;
-  const toY = s => PAD.t + cH - (Math.max(0, Math.min(100, s)) / 100) * cH;
+  /* ── auto-scale y to actual data range with padding ── */
+  const scores  = readings.map(r => r.score);
+  const dataMin = Math.min(...scores);
+  const dataMax = Math.max(...scores);
+  const pad5    = Math.max(5, Math.ceil((dataMax - dataMin) * 0.25));
+  const yMin    = Math.max(0,   Math.floor((dataMin - pad5) / 5) * 5);
+  const yMax    = Math.min(100, Math.ceil ((dataMax + pad5) / 5) * 5);
+  const yRange  = yMax - yMin || 10;
 
-  /* zone bands (bottom → top) */
+  const toX = i => PAD.l + (i / Math.max(n - 1, 1)) * cW;
+  const toY = s => PAD.t + cH - ((Math.max(yMin, Math.min(yMax, s)) - yMin) / yRange) * cH;
+
+  /* zone bands clipped to visible yMin–yMax */
   const ZONES = [
     { lo: 0,  hi: 30,  fill: 'rgba(34,197,94,0.06)'  },
     { lo: 30, hi: 50,  fill: 'rgba(59,130,246,0.07)'  },
@@ -2068,34 +2077,46 @@ function renderHistoryChart(readings) {
     pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') +
     ` L${pts[n-1][0].toFixed(1)},${bottom} Z`;
 
-  /* unique gradient id (avoid collisions on re-render) */
+  /* unique gradient id */
   const gid = 'hg' + Date.now();
 
   let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"
     style="overflow:visible;display:block;user-select:none;">
   <defs>
     <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#3b82f6" stop-opacity="0.30"/>
+      <stop offset="0%"   stop-color="#3b82f6" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02"/>
     </linearGradient>
   </defs>`;
 
-  /* zone rects */
+  /* zone rects — clip to visible range */
   ZONES.forEach(z => {
-    const yT = toY(z.hi), yB = toY(z.lo);
+    const lo = Math.max(z.lo, yMin), hi = Math.min(z.hi, yMax);
+    if (hi <= lo) return;
+    const yT = toY(hi), yB = toY(lo);
     s += `<rect x="${PAD.l}" y="${yT.toFixed(1)}" width="${cW.toFixed(1)}"
           height="${(yB - yT).toFixed(1)}" fill="${z.fill}"/>`;
   });
 
-  /* horizontal guide line at 50 */
-  s += `<line x1="${PAD.l}" y1="${toY(50).toFixed(1)}"
-         x2="${(PAD.l + cW).toFixed(1)}" y2="${toY(50).toFixed(1)}"
-         stroke="rgba(255,255,255,0.04)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  /* y-axis guide lines + labels at every 5-point step in visible range */
+  const yStep = yRange <= 20 ? 5 : yRange <= 40 ? 10 : 20;
+  const yFirst = Math.ceil(yMin / yStep) * yStep;
+  for (let v = yFirst; v <= yMax; v += yStep) {
+    const y = toY(v);
+    // horizontal grid line
+    s += `<line x1="${PAD.l}" y1="${y.toFixed(1)}"
+           x2="${(PAD.l + cW).toFixed(1)}" y2="${y.toFixed(1)}"
+           stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="3 4"/>`;
+    // y-axis label
+    s += `<text x="${(PAD.l - 5).toFixed(1)}" y="${(y + 3.5).toFixed(1)}"
+           text-anchor="end" font-family="Space Mono,monospace" font-size="8"
+           fill="rgba(75,85,99,0.75)" letter-spacing="0.3">${v}</text>`;
+  }
 
   /* area fill + line */
   s += `<path d="${areaPath}" fill="url(#${gid})"/>`;
   s += `<polyline points="${ptsStr}" fill="none" stroke="#3b82f6"
-         stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+         stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
 
   /* interactive elements (hidden by default) */
   s += `<line id="hist-cursor" x1="0" y1="${PAD.t}" x2="0" y2="${bottom}"
