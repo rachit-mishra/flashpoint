@@ -2103,19 +2103,49 @@ function renderHistoryChart(readings) {
   s += `<circle id="hist-dot" cx="0" cy="0" r="4.5" fill="#3b82f6"
          stroke="#080c14" stroke-width="2" style="display:none"/>`;
 
-  /* x-axis time labels */
-  const maxLbls = Math.min(n, Math.floor(cW / 70));
-  const step    = Math.max(1, Math.round((n - 1) / Math.max(maxLbls - 1, 1)));
-  const labelIdxs = new Set([0]);
-  for (let i = step; i < n; i += step) labelIdxs.add(i);
-  labelIdxs.add(n - 1);
-  labelIdxs.forEach(i => {
-    const x   = toX(i);
-    const ts  = new Date(readings[i].ts);
-    const lbl = ts.toLocaleTimeString('en-GB', {
-      hour:'2-digit', minute:'2-digit', timeZone:'UTC', hour12:false
+  /* ── x-axis labels: day boundaries get date labels, rest get HH:MM ── */
+  // Find indices where the UTC date flips (midnight crossings)
+  const dayBoundaries = new Set();
+  for (let i = 1; i < n; i++) {
+    if (readings[i].ts.slice(0, 10) !== readings[i - 1].ts.slice(0, 10))
+      dayBoundaries.add(i);
+  }
+
+  // Regular time ticks — avoid crowding near day-boundary labels
+  const maxTimeTicks = Math.max(2, Math.floor(cW / 90));
+  const timeStep     = Math.max(1, Math.round((n - 1) / maxTimeTicks));
+  const timeLabelIdxs = new Set([0, n - 1]);
+  for (let i = timeStep; i < n - 1; i += timeStep) {
+    // skip if a day boundary is within ±2 ticks (would crowd the label)
+    const near = [...dayBoundaries].some(b => Math.abs(b - i) <= 2);
+    if (!near) timeLabelIdxs.add(i);
+  }
+
+  // Draw subtle vertical rules + date labels at each day boundary
+  dayBoundaries.forEach(i => {
+    const x  = toX(i);
+    const ts = new Date(readings[i].ts);
+    const lbl = ts.toLocaleDateString('en-GB', {
+      weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
     });
-    s += `<text x="${x.toFixed(1)}" y="${H - 7}" text-anchor="middle"
+    // vertical separator
+    s += `<line x1="${x.toFixed(1)}" y1="${PAD.t}" x2="${x.toFixed(1)}" y2="${bottom}"
+           stroke="rgba(255,255,255,0.07)" stroke-width="1" stroke-dasharray="2 5"/>`;
+    // date label (brighter, slightly larger)
+    s += `<text x="${x.toFixed(1)}" y="${H - 6}" text-anchor="middle"
+           font-family="Space Mono,monospace" font-size="9" fill="rgba(148,163,184,0.85)"
+           letter-spacing="0.5">${lbl}</text>`;
+  });
+
+  // Draw regular HH:MM time ticks
+  timeLabelIdxs.forEach(i => {
+    if (dayBoundaries.has(i)) return;
+    const x  = toX(i);
+    const ts = new Date(readings[i].ts);
+    const lbl = ts.toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false
+    });
+    s += `<text x="${x.toFixed(1)}" y="${H - 6}" text-anchor="middle"
            font-family="Space Mono,monospace" font-size="8" fill="rgba(75,85,99,0.85)"
            letter-spacing="0.5">${lbl}</text>`;
   });
@@ -2151,12 +2181,15 @@ function renderHistoryChart(readings) {
     dot.style.display = '';
 
     const ts  = new Date(r.ts);
-    const lbl = ts.toLocaleTimeString('en-GB', {
-      hour:'2-digit', minute:'2-digit', timeZone:'UTC', hour12:false
+    const dateLbl = ts.toLocaleDateString('en-GB', {
+      weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
+    });
+    const timeLbl = ts.toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false
     });
     tip.innerHTML =
       `<span style="color:${c.hex};font-weight:700">${r.score}</span>` +
-      ` <span style="color:var(--text-3)">${r.label.toUpperCase()} · ${lbl} UTC</span>`;
+      ` <span style="color:var(--text-3)">${r.label.toUpperCase()} · ${dateLbl} ${timeLbl} UTC</span>`;
 
     /* tip positioning — keep it inside the chart */
     let left = x + 12;
