@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scenario Engine · FLASHPOINT</title>
+  <meta name="description" content="AI-powered geopolitical scenario analysis. Pick an actor, describe a trigger, get a structured intelligence assessment instantly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #080c14;
+      --surface: #0d1220;
+      --border:  #1e2a3a;
+      --red:     #dc2626;
+      --red-dim: rgba(220,38,38,0.12);
+      --white:   #eef2ff;
+      --muted:   #4b5563;
+      --font-d:  'Space Grotesk', sans-serif;
+      --font-m:  'Space Mono', monospace;
+    }
+    html, body { background: var(--bg); color: var(--white); font-family: var(--font-d); min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Shell ── */
+    .shell { max-width: 1160px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 22px; border-bottom: 1px solid var(--border); margin-bottom: 40px;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-mark {
+      width: 40px; height: 40px; background: var(--red); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 22px; height: 22px; }
+    .logo-copy { display: flex; flex-direction: column; gap: 2px; }
+    .logo-name { font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
+    .logo-tagline { font-family: var(--font-m); font-size: 9.5px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+    .header-nav { display: flex; align-items: center; gap: 8px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 7px; padding: 6px 14px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-family: var(--font-m); font-size: 11px; color: var(--muted);
+      letter-spacing: 0.06em; transition: all 0.2s;
+    }
+    .nav-link:hover { background: var(--red-dim); border-color: rgba(220,38,38,0.55); color: var(--white); }
+    .nav-link.active { background: var(--red-dim); border-color: rgba(220,38,38,0.4); color: var(--white); }
+    .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+    .nav-link.active .nav-dot { background: var(--red); }
+
+    /* ── Hero ── */
+    .hero { margin-bottom: 36px; }
+    .hero-eyebrow {
+      font-family: var(--font-m); font-size: 11px; letter-spacing: 0.14em;
+      color: var(--red); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .hero-eyebrow::before { content: ''; display: inline-block; width: 20px; height: 1px; background: var(--red); }
+    .hero-title { font-size: 34px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 10px; }
+    .hero-desc { color: var(--muted); font-size: 15px; line-height: 1.65; max-width: 560px; }
+
+    /* ── Form card ── */
+    .form-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px; margin-bottom: 40px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-label { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+    .form-select, .form-input {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--white); font-family: var(--font-d); font-size: 14px;
+      padding: 12px 16px; outline: none; width: 100%; transition: border-color 0.2s;
+    }
+    .form-select:focus, .form-input:focus { border-color: rgba(220,38,38,0.5); }
+    .form-select option { background: var(--bg); }
+    .chips-label { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .chip {
+      padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px;
+      font-family: var(--font-m); font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .chip:hover { border-color: rgba(220,38,38,0.5); color: var(--white); background: var(--red-dim); }
+    .form-footer { display: flex; align-items: center; gap: 16px; }
+    .run-btn {
+      background: var(--red); color: white; border: none; border-radius: 8px;
+      font-family: var(--font-m); font-size: 13px; letter-spacing: 0.08em;
+      padding: 14px 28px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .run-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .form-hint { font-family: var(--font-m); font-size: 11px; color: var(--muted); }
+
+    /* ── Results ── */
+    #results { display: none; }
+
+    .result-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+    }
+    .result-eyebrow { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.14em; color: var(--red); margin-bottom: 8px; }
+    .result-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .result-sub { font-family: var(--font-m); font-size: 12px; color: var(--muted); }
+    .result-actions { display: flex; gap: 10px; align-items: center; }
+    .icon-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--muted); font-family: var(--font-m); font-size: 11px;
+      padding: 8px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .icon-btn:hover { border-color: rgba(220,38,38,0.5); color: var(--white); }
+
+    /* Main 2-col grid */
+    .result-grid { display: grid; grid-template-columns: 190px 1fr; gap: 16px; margin-bottom: 16px; }
+
+    /* Escalation meter */
+    .esc-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 22px 18px; display: flex; flex-direction: column; align-items: center; gap: 18px;
+    }
+    .esc-lbl { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+    .esc-ring {
+      width: 96px; height: 96px; border-radius: 50%; border: 5px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      transition: border-color 0.6s ease;
+    }
+    .esc-val { font-size: 15px; font-weight: 700; letter-spacing: 0.06em; transition: color 0.4s; }
+    .esc-sub-lbl { font-family: var(--font-m); font-size: 8px; color: var(--muted); }
+    .esc-bars { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+    .esc-bar-row { display: flex; align-items: center; gap: 8px; }
+    .esc-bar-name { font-family: var(--font-m); font-size: 9px; color: var(--muted); width: 42px; text-align: right; }
+    .esc-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .esc-fill { height: 100%; border-radius: 2px; width: 0%; transition: width 0.9s ease; }
+
+    /* Timeline */
+    .timeline-col { display: flex; flex-direction: column; gap: 12px; }
+    .tc {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 20px; position: relative; overflow: hidden;
+    }
+    .tc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+    .tc.t48::before  { background: #ef4444; }
+    .tc.t1w::before  { background: #f59e0b; }
+    .tc.t1m::before  { background: #3b82f6; }
+    .tc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .tc-badge {
+      font-family: var(--font-m); font-size: 9px; letter-spacing: 0.1em;
+      padding: 3px 8px; border-radius: 4px; font-weight: 700;
+    }
+    .t48 .tc-badge { background: rgba(239,68,68,0.15);  color: #ef4444; }
+    .t1w .tc-badge { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .t1m .tc-badge { background: rgba(59,130,246,0.15);  color: #3b82f6; }
+    .tc-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .tc-body { font-size: 14px; line-height: 1.65; color: var(--white); min-height: 20px; }
+    .tc-body.streaming::after { content: '▌'; animation: blink 0.7s step-end infinite; color: var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* Bottom row */
+    .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .list-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .list-title { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+    .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; min-height: 28px; }
+    .risk-badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 5px; font-family: var(--font-m); font-size: 11px;
+    }
+    .risk-badge.HIGH { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3);  color: #ef4444; }
+    .risk-badge.MED  { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; }
+    .risk-badge.LOW  { background: rgba(59,130,246,0.1);  border: 1px solid rgba(59,130,246,0.2); color: #3b82f6; }
+    .risk-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .HIGH .risk-dot { background: #ef4444; }
+    .MED  .risk-dot { background: #f59e0b; }
+    .LOW  .risk-dot { background: #3b82f6; }
+
+    /* Footer row */
+    .footer-row { display: grid; grid-template-columns: 1fr 200px; gap: 16px; }
+    .hist-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .hist-title { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+    .hist-body { font-size: 14px; line-height: 1.65; color: var(--white); min-height: 18px; }
+    .conf-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .conf-title { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+    .conf-val { font-size: 20px; font-weight: 700; margin-bottom: 6px; transition: color 0.4s; }
+    .conf-reason { font-family: var(--font-m); font-size: 11px; color: var(--muted); line-height: 1.55; }
+
+    /* Skeleton */
+    .sk {
+      background: linear-gradient(90deg, var(--border) 25%, #253040 50%, var(--border) 75%);
+      background-size: 200% 100%; animation: shimmer 1.5s infinite;
+      border-radius: 4px; height: 14px; margin-bottom: 6px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Disclaimer */
+    .disclaimer { font-family: var(--font-m); font-size: 10px; color: var(--muted); text-align: center; margin-top: 48px; line-height: 1.7; }
+
+    @media (max-width: 720px) {
+      .form-row { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+      .bottom-row { grid-template-columns: 1fr; }
+      .footer-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="header">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="6.5" stroke="white" stroke-width="1.6"/>
+          <circle cx="11" cy="11" r="2.2" fill="white"/>
+          <line x1="11" y1="2"  x2="11" y2="5.5"  stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="11" y1="16.5" x2="11" y2="20" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="2"  y1="11" x2="5.5"  y2="11" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="16.5" y1="11" x2="20" y2="11" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-copy">
+        <div class="logo-name">FLASHPOINT</div>
+        <div class="logo-tagline">Global Intelligence Monitor</div>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/intel" class="nav-link">
+        <span class="nav-dot"></span>INTELLIGENCE EXPLORER
+      </a>
+      <a href="/scenario" class="nav-link active">
+        <span class="nav-dot"></span>SCENARIO ENGINE
+      </a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">AI-POWERED · SCENARIO ANALYSIS</div>
+    <h1 class="hero-title">What If?</h1>
+    <p class="hero-desc">Select an actor and describe a trigger event. FLASHPOINT will generate a structured intelligence assessment — immediate effects, cascading fallout, markets at risk, and actors to watch — grounded in live intelligence.</p>
+  </div>
+
+  <!-- FORM -->
+  <div class="form-card" id="form-card">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Actor / Region</label>
+        <select class="form-select" id="actor-select">
+          <option value="">Loading actors…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trigger Event</label>
+        <input type="text" class="form-input" id="trigger-input" placeholder="e.g. launches a military strike on…" />
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:24px;">
+      <div class="chips-label">Quick triggers</div>
+      <div class="chips" id="trigger-chips">
+        <span class="chip" data-t="launches a military strike">Launches military strike</span>
+        <span class="chip" data-t="imposes sweeping economic sanctions">Imposes economic sanctions</span>
+        <span class="chip" data-t="withdraws from a key international treaty">Withdraws from treaty</span>
+        <span class="chip" data-t="closes a critical strait or border crossing">Closes critical strait/border</span>
+        <span class="chip" data-t="declares a state of emergency">Declares state of emergency</span>
+        <span class="chip" data-t="conducts a nuclear weapons test">Conducts nuclear test</span>
+        <span class="chip" data-t="experiences a sudden government collapse">Government collapse</span>
+        <span class="chip" data-t="loses support from its primary military ally">Loses key ally</span>
+      </div>
+    </div>
+    <div class="form-footer">
+      <button class="run-btn" id="run-btn" disabled>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polygon points="1,1 12,6.5 1,12" fill="white"/></svg>
+        RUN SCENARIO
+      </button>
+      <span class="form-hint" id="form-hint">Select an actor and describe a trigger to begin</span>
+    </div>
+  </div>
+
+  <!-- RESULTS (hidden until run) -->
+  <div id="results">
+
+    <div class="result-header">
+      <div>
+        <div class="result-eyebrow">SCENARIO ANALYSIS</div>
+        <div class="result-title" id="res-title">—</div>
+        <div class="result-sub"  id="res-sub">—</div>
+      </div>
+      <div class="result-actions">
+        <button class="icon-btn" id="new-btn">← NEW SCENARIO</button>
+        <button class="icon-btn" id="share-btn">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="9" cy="2" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="9" cy="10" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="2" cy="6" r="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <line x1="3.3" y1="5.2" x2="7.7" y2="2.8" stroke="currentColor" stroke-width="1.2"/>
+            <line x1="3.3" y1="6.8" x2="7.7" y2="9.2" stroke="currentColor" stroke-width="1.2"/>
+          </svg>
+          SHARE
+        </button>
+      </div>
+    </div>
+
+    <!-- Escalation + Timeline -->
+    <div class="result-grid">
+      <div class="esc-card">
+        <div class="esc-lbl">ESCALATION</div>
+        <div class="esc-ring" id="esc-ring">
+          <div class="esc-val" id="esc-val">—</div>
+          <div class="esc-sub-lbl">LEVEL</div>
+        </div>
+        <div class="esc-bars">
+          <div class="esc-bar-row">
+            <span class="esc-bar-name">LOW</span>
+            <div class="esc-track"><div class="esc-fill" id="bar-low"  style="background:#3b82f6"></div></div>
+          </div>
+          <div class="esc-bar-row">
+            <span class="esc-bar-name">MED</span>
+            <div class="esc-track"><div class="esc-fill" id="bar-med"  style="background:#f59e0b"></div></div>
+          </div>
+          <div class="esc-bar-row">
+            <span class="esc-bar-name">HIGH</span>
+            <div class="esc-track"><div class="esc-fill" id="bar-high" style="background:#ef4444"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-col">
+        <div class="tc t48">
+          <div class="tc-head">
+            <span class="tc-badge">T+48HRS</span>
+            <span class="tc-title">Immediate Effects</span>
+          </div>
+          <div class="tc-body streaming" id="sec-immediate">
+            <div class="sk" style="width:92%"></div><div class="sk" style="width:72%"></div>
+          </div>
+        </div>
+        <div class="tc t1w">
+          <div class="tc-head">
+            <span class="tc-badge">T+1 WEEK</span>
+            <span class="tc-title">Secondary Cascade</span>
+          </div>
+          <div class="tc-body streaming" id="sec-cascade">
+            <div class="sk" style="width:86%"></div><div class="sk" style="width:64%"></div>
+          </div>
+        </div>
+        <div class="tc t1m">
+          <div class="tc-head">
+            <span class="tc-badge">T+1 MONTH</span>
+            <span class="tc-title">Structural Shifts</span>
+          </div>
+          <div class="tc-body streaming" id="sec-structural">
+            <div class="sk" style="width:80%"></div><div class="sk" style="width:68%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Markets + Actors -->
+    <div class="bottom-row">
+      <div class="list-card">
+        <div class="list-title">⚡ MARKETS AT RISK</div>
+        <div class="badge-grid" id="sec-markets">
+          <div class="sk" style="width:80px;height:26px;border-radius:5px;margin:0"></div>
+          <div class="sk" style="width:68px;height:26px;border-radius:5px;margin:0"></div>
+          <div class="sk" style="width:76px;height:26px;border-radius:5px;margin:0"></div>
+        </div>
+      </div>
+      <div class="list-card">
+        <div class="list-title">👁 ACTORS TO WATCH</div>
+        <div class="badge-grid" id="sec-actors">
+          <div class="sk" style="width:88px;height:26px;border-radius:5px;margin:0"></div>
+          <div class="sk" style="width:74px;height:26px;border-radius:5px;margin:0"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical + Confidence -->
+    <div class="footer-row">
+      <div class="hist-card">
+        <div class="hist-title">📜 HISTORICAL ANCHOR</div>
+        <div class="hist-body streaming" id="sec-historical">
+          <div class="sk" style="width:96%"></div><div class="sk" style="width:58%"></div>
+        </div>
+      </div>
+      <div class="conf-card">
+        <div class="conf-title">CONFIDENCE</div>
+        <div class="conf-val" id="conf-val">—</div>
+        <div class="conf-reason" id="conf-reason">Analysing live intelligence…</div>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+
+  <div class="disclaimer">
+    FLASHPOINT SCENARIO ENGINE &nbsp;·&nbsp; AI-GENERATED ANALYSIS GROUNDED IN LIVE INTELLIGENCE<br>
+    This is structured analytical reasoning, not a prediction. For decision support only.
+  </div>
+
+</div><!-- /shell -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentActor   = '';
+let currentTrigger = '';
+
+// ── Load actors into dropdown ──────────────────────────────────────────────
+async function loadActors() {
+  try {
+    const data = await fetch('/api/pulse').then(r => r.json());
+    // Build actor → max severity map from flashpoints
+    const sevMap = {};
+    for (const fp of (data.flashpoints || [])) {
+      for (const actor of (fp.actors || [])) {
+        if (!actor) continue;
+        sevMap[actor] = Math.max(sevMap[actor] || 0, fp.severity || 1);
+      }
+    }
+    const actors = Object.entries(sevMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+    const sel = document.getElementById('actor-select');
+    sel.innerHTML = '<option value="">Select an actor…</option>' +
+      actors.map(n => `<option value="${n}">${n}</option>`).join('');
+  } catch {
+    document.getElementById('actor-select').innerHTML = '<option value="">Failed to load — refresh page</option>';
+  }
+}
+
+// ── Form validation ────────────────────────────────────────────────────────
+function checkReady() {
+  const actor   = document.getElementById('actor-select').value;
+  const trigger = document.getElementById('trigger-input').value.trim();
+  const btn  = document.getElementById('run-btn');
+  const hint = document.getElementById('form-hint');
+  btn.disabled = !(actor && trigger);
+  if (actor && trigger) {
+    hint.textContent = `Ready · ${actor} · "${trigger}"`;
+    hint.style.color = 'var(--white)';
+  } else {
+    hint.textContent = 'Select an actor and describe a trigger to begin';
+    hint.style.color = 'var(--muted)';
+  }
+}
+
+document.getElementById('actor-select').addEventListener('change', checkReady);
+document.getElementById('trigger-input').addEventListener('input',  checkReady);
+
+// Chips
+document.getElementById('trigger-chips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.getElementById('trigger-input').value = chip.dataset.t;
+  checkReady();
+  document.getElementById('trigger-input').focus();
+});
+
+// ── Run scenario ───────────────────────────────────────────────────────────
+document.getElementById('run-btn').addEventListener('click', runScenario);
+
+async function runScenario() {
+  currentActor   = document.getElementById('actor-select').value;
+  currentTrigger = document.getElementById('trigger-input').value.trim();
+  if (!currentActor || !currentTrigger) return;
+
+  // Show + scroll to results
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+  setTimeout(() => resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+
+  // Set header
+  document.getElementById('res-title').textContent = currentActor;
+  document.getElementById('res-sub').textContent   = `"${currentTrigger}" · Generating analysis…`;
+
+  // Reset sections to skeletons
+  const textSections = ['immediate','cascade','structural','historical'];
+  textSections.forEach(id => {
+    const el = document.getElementById(`sec-${id}`);
+    el.innerHTML = '<div class="sk" style="width:90%"></div><div class="sk" style="width:70%"></div>';
+    el.classList.add('streaming');
+  });
+
+  ['markets','actors'].forEach(id => {
+    document.getElementById(`sec-${id}`).innerHTML =
+      '<div class="sk" style="width:80px;height:26px;border-radius:5px;margin:0"></div>' +
+      '<div class="sk" style="width:68px;height:26px;border-radius:5px;margin:0"></div>';
+  });
+
+  // Reset escalation
+  const ring = document.getElementById('esc-ring');
+  const val  = document.getElementById('esc-val');
+  ring.style.borderColor = 'var(--border)';
+  val.textContent  = '—';
+  val.style.color  = 'var(--white)';
+  ['bar-low','bar-med','bar-high'].forEach(id => document.getElementById(id).style.width = '0%');
+  document.getElementById('conf-val').textContent    = '—';
+  document.getElementById('conf-val').style.color    = 'var(--white)';
+  document.getElementById('conf-reason').textContent = 'Analysing live intelligence…';
+
+  document.getElementById('run-btn').disabled = true;
+
+  // Stream
+  let fullText = '';
+  const url = `/api/scenario/stream?actor=${encodeURIComponent(currentActor)}&trigger=${encodeURIComponent(currentTrigger)}`;
+  const es  = new EventSource(url);
+
+  es.onmessage = (e) => {
+    if (e.data === '[DONE]') {
+      es.close();
+      finalise(fullText);
+      document.getElementById('run-btn').disabled = false;
+      document.getElementById('res-sub').textContent =
+        `"${currentTrigger}" · ${new Date().toUTCString().slice(5,16)} UTC`;
+      return;
+    }
+    try {
+      const { chunk, error } = JSON.parse(e.data);
+      if (error) { es.close(); document.getElementById('run-btn').disabled = false; return; }
+      fullText += chunk;
+      renderPartial(fullText);
+    } catch {}
+  };
+
+  es.onerror = () => {
+    es.close();
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('res-sub').textContent = 'Error — please try again';
+  };
+}
+
+// ── Parse sections ─────────────────────────────────────────────────────────
+function parseSections(text) {
+  const sections = {};
+  const parts = text.split(/^SECTION:/m);
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    const nl = part.indexOf('\n');
+    if (nl === -1) continue;
+    const key     = part.substring(0, nl).trim().toUpperCase();
+    const content = part.substring(nl + 1).trim();
+    sections[key] = content;
+  }
+  return sections;
+}
+
+// ── Render while streaming ─────────────────────────────────────────────────
+function renderPartial(text) {
+  const s = parseSections(text);
+  if (s.IMMEDIATE)  setText('sec-immediate',  s.IMMEDIATE,  true);
+  if (s.CASCADE)    setText('sec-cascade',     s.CASCADE,    true);
+  if (s.STRUCTURAL) setText('sec-structural',  s.STRUCTURAL, true);
+  if (s.HISTORICAL) setText('sec-historical',  s.HISTORICAL, true);
+  if (s.MARKETS)    renderBadges('sec-markets', s.MARKETS);
+  if (s.ACTORS)     renderBadges('sec-actors',  s.ACTORS);
+  if (s.ESCALATION) renderEscalation(s.ESCALATION.split('\n')[0].trim());
+  if (s.CONFIDENCE) renderConfidence(s.CONFIDENCE);
+}
+
+function finalise(text) {
+  renderPartial(text);
+  ['sec-immediate','sec-cascade','sec-structural','sec-historical'].forEach(id => {
+    document.getElementById(id).classList.remove('streaming');
+  });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function setText(id, content, streaming) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = content;
+  streaming ? el.classList.add('streaming') : el.classList.remove('streaming');
+}
+
+function renderEscalation(raw) {
+  const level = raw.toUpperCase().replace(/[^A-Z]/g, '');
+  if (!['LOW','MEDIUM','HIGH'].includes(level)) return;
+  const colors = { LOW: '#3b82f6', MEDIUM: '#f59e0b', HIGH: '#ef4444' };
+  const barMap  = { LOW: [100,0,0], MEDIUM: [30,100,0], HIGH: [15,50,100] };
+  const color   = colors[level];
+  const [bl, bm, bh] = barMap[level];
+  document.getElementById('esc-ring').style.borderColor = color;
+  document.getElementById('esc-val').textContent  = level;
+  document.getElementById('esc-val').style.color  = color;
+  document.getElementById('bar-low').style.width  = bl + '%';
+  document.getElementById('bar-med').style.width  = bm + '%';
+  document.getElementById('bar-high').style.width = bh + '%';
+}
+
+function renderConfidence(raw) {
+  const line   = raw.split('\n')[0].trim();
+  const parts  = line.split('·').map(p => p.trim());
+  const level  = parts[0].toUpperCase().replace(/[^A-Z]/g, '');
+  const reason = parts[1] || '';
+  const colors = { LOW: '#3b82f6', MEDIUM: '#f59e0b', HIGH: '#22c55e' };
+  const el = document.getElementById('conf-val');
+  el.textContent = level || '—';
+  el.style.color = colors[level] || 'var(--white)';
+  document.getElementById('conf-reason').textContent = reason;
+}
+
+function renderBadges(containerId, raw) {
+  const el    = document.getElementById(containerId);
+  if (!el) return;
+  const line  = raw.split('\n')[0];
+  const items = line.split(',').map(s => s.trim()).filter(Boolean);
+  if (!items.length) return;
+  el.innerHTML = items.map(item => {
+    const colonIdx = item.lastIndexOf(':');
+    const name = colonIdx > 0 ? item.substring(0, colonIdx).trim() : item;
+    const risk = colonIdx > 0 ? item.substring(colonIdx + 1).trim().toUpperCase() : 'MED';
+    const r = ['HIGH','MED','LOW'].includes(risk) ? risk : 'MED';
+    return `<span class="risk-badge ${r}"><span class="risk-dot"></span>${name}</span>`;
+  }).join('');
+}
+
+// ── Buttons ────────────────────────────────────────────────────────────────
+document.getElementById('new-btn').addEventListener('click', () => {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('form-card').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.getElementById('share-btn').addEventListener('click', () => {
+  const url = `${location.origin}/scenario?actor=${encodeURIComponent(currentActor)}&trigger=${encodeURIComponent(currentTrigger)}`;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('share-btn');
+    const orig = btn.innerHTML;
+    btn.textContent = 'COPIED ✓';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+});
+
+// ── Auto-run from URL params ───────────────────────────────────────────────
+async function init() {
+  await loadActors();
+  const p      = new URLSearchParams(location.search);
+  const actorP = p.get('actor');
+  const trigP  = p.get('trigger');
+  if (actorP && trigP) {
+    document.getElementById('actor-select').value  = actorP;
+    document.getElementById('trigger-input').value = trigP;
+    checkReady();
+    runScenario();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

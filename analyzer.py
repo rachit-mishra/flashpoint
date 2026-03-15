@@ -179,6 +179,67 @@ def generate_country_brief(name: str, articles: list[dict], _retries: int = 2) -
     return "Intelligence summary temporarily unavailable."
 
 
+def stream_scenario(actor: str, trigger: str, articles: list, severity: int, sentiment: str):
+    """Stream a structured scenario analysis. Yields raw text chunks via Claude streaming."""
+    headlines = "\n".join(
+        f"- {a.get('title','')[:120]} | {a.get('category','Other')} | sev {a.get('severity',1)}"
+        for a in articles[:15] if a.get("title")
+    )
+    if not headlines:
+        headlines = "No specific headlines available — use broad geopolitical knowledge for this actor."
+
+    system = (
+        "You are a senior geopolitical intelligence analyst. "
+        "The headlines provided are real, current intelligence items. Analyse them directly. "
+        "Be precise, direct, and analytical. Never hedge with disclaimers about lacking real-time data. "
+        "Never ask for clarification. Produce the analysis immediately."
+    )
+
+    prompt = f"""SCENARIO ANALYSIS REQUEST
+
+ACTOR: {actor}
+TRIGGER EVENT: {trigger}
+CURRENT SEVERITY: {severity}/5
+CURRENT TREND: {sentiment}
+LIVE INTELLIGENCE ({len(articles)} articles):
+{headlines}
+
+Produce a structured scenario analysis using EXACTLY this format — each section label on its own line:
+
+SECTION:IMMEDIATE
+[T+48hrs: 2-3 sentences on immediate effects]
+
+SECTION:CASCADE
+[T+1 week: 2-3 sentences on secondary cascade effects]
+
+SECTION:STRUCTURAL
+[T+1 month: 2-3 sentences on structural/long-term shifts]
+
+SECTION:MARKETS
+[Comma-separated Name:RISK pairs. RISK = HIGH, MED, or LOW. e.g. Crude Oil:HIGH, LNG:MED, Defense stocks:LOW]
+
+SECTION:ACTORS
+[Comma-separated Name:RISK pairs. e.g. Saudi Arabia:HIGH, US 5th Fleet:MED, UAE:LOW]
+
+SECTION:HISTORICAL
+[1-2 sentences on the closest historical precedent and outcome]
+
+SECTION:ESCALATION
+[ONE WORD ONLY: LOW or MEDIUM or HIGH]
+
+SECTION:CONFIDENCE
+[ONE WORD: LOW or MEDIUM or HIGH] · [one brief reason]"""
+
+    with client.messages.stream(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1200,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    ) as stream:
+        for text in stream.text_stream:
+            yield text
+
+
 def _fallback() -> dict:
     return {
         "category": "Other",

@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from analyzer import analyze_batch, generate_situation_report, generate_country_brief
+from analyzer import analyze_batch, generate_situation_report, generate_country_brief, stream_scenario
 from fetcher import get_all_news
 
 load_dotenv()
@@ -876,6 +876,71 @@ async def serve_og_card(name: str = "FLASHPOINT", sev: int = 0, sent: str = "Neu
     from fastapi.responses import Response
     return Response(content=buf.getvalue(), media_type="image/png",
                     headers={"Cache-Control": "public, max-age=300"})
+
+
+@app.get("/scenario")
+async def serve_scenario():
+    """Serve the Scenario Engine page."""
+    with open(BASE_DIR / "scenario.html") as f:
+        return HTMLResponse(f.read())
+
+
+@app.get("/api/scenario/stream")
+async def scenario_stream(actor: str, trigger: str):
+    """SSE endpoint — streams scenario analysis for the given actor + trigger."""
+    import json as _json
+    import queue
+    import threading
+    from fastapi.responses import StreamingResponse as _StreamingResponse
+
+    data         = _cache.get("data", {})
+    all_articles = data.get("articles", [])
+    actors_data  = data.get("actors", [])
+
+    actor_lower = actor.lower()
+    matching = [
+        a for a in all_articles
+        if actor_lower in [x.lower() for x in a.get("actors", [])]
+        or actor_lower in a.get("title",  "").lower()
+        or actor_lower in a.get("region", "").lower()
+    ]
+    actor_info = next(
+        (a for a in actors_data if a.get("name", "").lower() == actor_lower), {}
+    )
+    severity  = actor_info.get("severity",  3)
+    sentiment = actor_info.get("sentiment", "Uncertain")
+
+    chunk_queue: queue.Queue = queue.Queue()
+
+    def producer():
+        try:
+            for chunk in stream_scenario(actor, trigger, matching, severity, sentiment):
+                chunk_queue.put(chunk)
+        except Exception as e:
+            chunk_queue.put({"error": str(e)})
+        finally:
+            chunk_queue.put(None)  # sentinel
+
+    threading.Thread(target=producer, daemon=True).start()
+
+    async def event_generator():
+        loop = asyncio.get_event_loop()
+        while True:
+            item = await loop.run_in_executor(None, chunk_queue.get)
+            if item is None:
+                yield "data: [DONE]\n\n"
+                break
+            if isinstance(item, dict) and "error" in item:
+                yield f"data: {_json.dumps(item)}\n\n"
+                yield "data: [DONE]\n\n"
+                break
+            yield f"data: {_json.dumps({'chunk': item})}\n\n"
+
+    return _StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/pulse")
