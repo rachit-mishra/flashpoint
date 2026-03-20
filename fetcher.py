@@ -29,6 +29,14 @@ RSS_FEEDS = [
     {"url": "https://www.theguardian.com/world/rss",                     "source": "The Guardian", "region": "Conflict & War"},
     # ── France 24 ──────────────────────────────────────────────────────────
     {"url": "https://www.france24.com/en/rss",                           "source": "France24",     "region": "Europe"},
+    # ── South Asia / India-focused ────────────────────────────────────────────
+    {"url": "https://feeds.bbci.co.uk/news/world/south_asia/rss.xml",    "source": "BBC",          "region": "South Asia"},
+    {"url": "https://www.aljazeera.com/tag/india/rss",                   "source": "Al Jazeera",   "region": "South Asia"},
+    {"url": "https://www.thehindu.com/news/national/feeder/default.rss", "source": "The Hindu",    "region": "South Asia"},
+    {"url": "https://www.ndtv.com/rss/india",                            "source": "NDTV",         "region": "South Asia"},
+    {"url": "https://www.dawn.com/feeds/home",                           "source": "Dawn",         "region": "South Asia"},
+    {"url": "https://www.scmp.com/rss/91/feed",                          "source": "SCMP",         "region": "South Asia"},
+    {"url": "https://www.theguardian.com/world/south-and-central-asia/rss", "source": "The Guardian", "region": "South Asia"},
 ]
 
 # Country → (lat, lon) for map plotting
@@ -48,6 +56,10 @@ COUNTRY_COORDS = {
     "germany": (51.1657, 10.4515), "uk": (55.3781, -3.4360),
     "brazil": (-14.2350, -51.9253), "mexico": (23.6345, -102.5528),
     "japan": (36.2048, 138.2529), "saudi arabia": (23.8859, 45.0792),
+    "bangladesh": (23.6850, 90.3563), "sri lanka": (7.8731, 80.7718),
+    "nepal": (28.3949, 84.1240), "bhutan": (27.5142, 90.4336),
+    "maldives": (3.2028, 73.2207), "kashmir": (34.0837, 74.7973),
+    "ladakh": (34.1526, 77.5771), "tibet": (29.6469, 91.1172),
 }
 
 

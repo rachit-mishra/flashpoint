@@ -82,6 +82,28 @@
     }
     .theme-toggle:hover { border-color: rgba(220,38,38,0.4); background: rgba(220,38,38,0.07); }
 
+    /* ── Theatre toggle ──────────────────────────────────────────────────── */
+    .theatre-toggle {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--text-3); padding: 6px 14px;
+      border-radius: 7px; border: 1px solid var(--border);
+      background: transparent; cursor: pointer;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .theatre-toggle:hover { border-color: var(--border-hover); color: var(--text-2); }
+    .theatre-toggle.active {
+      background: rgba(245,158,11,0.10);
+      border-color: rgba(245,158,11,0.4);
+      color: #f59e0b;
+    }
+    .theatre-toggle .theatre-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--text-3); transition: background 0.2s;
+    }
+    .theatre-toggle.active .theatre-dot { background: #f59e0b; }
+
     /* ── Shell ──────────────────────────────────────────────────────────── */
     .shell {
       max-width: 1200px;
@@ -1355,6 +1377,10 @@
         SCENARIO ENGINE
       </a>
     </nav>
+
+    <button id="theatre-btn" class="theatre-toggle" title="Filter to South Asia theatre">
+      <span class="theatre-dot"></span>SOUTH ASIA
+    </button>
 
     <button id="theme-btn" class="theme-toggle" title="Toggle light/dark mode">☀</button>
 
@@ -2954,17 +2980,20 @@ async function load() {
     const res  = await fetch('/api/pulse');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    _fullData = data;  // store unfiltered for theatre toggle
 
-    renderTension(data);
+    const view = applyTheatreFilter(data);
+
+    renderTension(data);  // tension always uses global data
     renderSignals(data.sentiment_breakdown || {});
     renderBrief(data.brief);
-    renderFlashpoints(data.flashpoints);
+    renderFlashpoints(view.flashpoints);
     renderPulse(data.regional_pulse);
     renderTicker(data);
     renderCategories(data.category_breakdown || {}, data.category_articles || {});
     renderTimestamp(data.last_updated);
     renderMap(data);
-    renderFeed(data.articles || []);
+    renderFeed(view.articles || []);
 
     // Refresh history chart + sparklines on each pulse update
     fetchHistory();
@@ -3083,6 +3112,82 @@ function _actorChips(actors) {
      >${name}</span>`
   ).join('<span style="color:var(--text-3);margin:0 3px;">·</span>');
 }
+
+// ── South Asia theatre filter ─────────────────────────────────────────────
+const SOUTH_ASIA_KW = [
+  'india','pakistan','bangladesh','sri lanka','nepal','bhutan','maldives',
+  'myanmar','afghanistan','kashmir','ladakh','lac','loc','modi','china',
+  'tibet','raw','isi','bsf','crpf','indian ocean','south asia',
+  'new delhi','islamabad','dhaka','colombo','kathmandu','kabul',
+];
+let _theatreActive = localStorage.getItem('fp-theatre') === 'south-asia';
+let _fullData = null; // stores unfiltered pulse data
+
+function _isSouthAsia(article) {
+  const text = ((article.title || '') + ' ' + (article.insight || '') + ' ' + (article.region || '')).toLowerCase();
+  if (text.includes('south asia')) return true;
+  const actors = (article.actors || []).map(a => a.toLowerCase());
+  return SOUTH_ASIA_KW.some(kw => text.includes(kw) || actors.some(a => a.includes(kw)));
+}
+
+function applyTheatreFilter(data) {
+  if (!_theatreActive) return data;
+  const articles = (data.articles || []).filter(_isSouthAsia);
+  const flashpoints = (data.flashpoints || []).filter(_isSouthAsia);
+  return { ...data, articles, flashpoints };
+}
+
+function toggleTheatre() {
+  _theatreActive = !_theatreActive;
+  localStorage.setItem('fp-theatre', _theatreActive ? 'south-asia' : '');
+  const btn = document.getElementById('theatre-btn');
+  if (btn) btn.classList.toggle('active', _theatreActive);
+
+  // Update tagline
+  const tagline = document.querySelector('.logo-tagline');
+  if (tagline) tagline.textContent = _theatreActive ? 'South Asia Theatre' : 'Global Intelligence Monitor';
+
+  // Re-render with filtered/unfiltered data
+  if (_fullData) {
+    const view = applyTheatreFilter(_fullData);
+    renderFlashpoints(view.flashpoints);
+    _feedArticles = view.articles || [];
+    _feedActiveCat = 'ALL';
+    document.querySelectorAll('.feed-filter-btn').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('.feed-filter-btn[data-cat="ALL"]');
+    if (allBtn) allBtn.classList.add('active');
+    _feedVisible = 12;
+    // Re-count
+    const counts = {};
+    _feedArticles.forEach(a => { counts[a.category] = (counts[a.category] || 0) + 1; });
+    const totalEl = document.getElementById('js-feed-total');
+    if (totalEl) totalEl.textContent = `${_feedArticles.length} articles`;
+    ['ALL','Conflict','Diplomacy','Economic','Nuclear','Terrorism'].forEach(cat => {
+      const el = document.getElementById(`js-fc-${cat}`);
+      if (!el) return;
+      el.textContent = cat === 'ALL' ? `(${_feedArticles.length})` : counts[cat] ? `(${counts[cat]})` : '';
+    });
+    document.querySelectorAll('.feed-filter-btn[data-cat]').forEach(btn => {
+      const cat = btn.dataset.cat;
+      if (cat === 'ALL') return;
+      btn.style.display = counts[cat] ? '' : 'none';
+    });
+    _renderFeedGrid();
+  }
+}
+
+// Init theatre button state
+(function() {
+  const btn = document.getElementById('theatre-btn');
+  if (btn) {
+    btn.classList.toggle('active', _theatreActive);
+    btn.addEventListener('click', toggleTheatre);
+  }
+  if (_theatreActive) {
+    const tagline = document.querySelector('.logo-tagline');
+    if (tagline) tagline.textContent = 'South Asia Theatre';
+  }
+})();
 
 // ── Theme toggle ───────────────────────────────────────────────────────────
 (function() {

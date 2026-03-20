@@ -54,8 +54,15 @@ SENTIMENT_WEIGHTS = {
 }
 MAX_RAW = 5.0 * 2.0 * 1.3  # 13.0
 
-ALL_REGIONS = ["Europe", "Middle East", "Asia Pacific", "Africa", "Americas", "Conflict & War"]
+ALL_REGIONS = ["Europe", "Middle East", "Asia Pacific", "Africa", "Americas", "Conflict & War", "South Asia"]
 REGION_DISPLAY = {"Conflict & War": "Global", "Asia Pacific": "Asia"}
+
+# South Asia theatre — actors used for filtering
+SOUTH_ASIA_ACTORS = {
+    "india", "pakistan", "bangladesh", "sri lanka", "nepal", "bhutan", "maldives",
+    "myanmar", "afghanistan", "china", "kashmir", "ladakh", "tibet",
+    "modi", "raw", "isi", "loc", "lac", "bsf", "crpf",
+}
 SENTIMENT_ORDER = {"Escalating": 0, "Uncertain": 1, "Neutral": 2, "De-escalating": 3}
 
 
