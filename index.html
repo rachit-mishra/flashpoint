@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>(function(){var t=localStorage.getItem('fp-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
   <title>FLASHPOINT — Global Intelligence Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -53,6 +54,33 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+
+    /* ── Light theme ─────────────────────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg:           #f0f4f8;
+      --surface:      #ffffff;
+      --surface-2:    #f8fafc;
+      --surface-3:    #f1f5f9;
+      --border:       rgba(0,0,0,0.09);
+      --border-hover: rgba(0,0,0,0.16);
+      --text-1:       #0d1117;
+      --text-2:       #4b5563;
+      --text-3:       #9ca3af;
+    }
+    [data-theme="light"] ::-webkit-scrollbar-track { background: #f0f4f8; }
+    [data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-3);
+      font-size: 15px;
+      width: 34px; height: 34px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: rgba(220,38,38,0.4); background: rgba(220,38,38,0.07); }
 
     /* ── Shell ──────────────────────────────────────────────────────────── */
     .shell {
@@ -1327,6 +1355,8 @@
         SCENARIO ENGINE
       </a>
     </nav>
+
+    <button id="theme-btn" class="theme-toggle" title="Toggle light/dark mode">☀</button>
 
     <div class="header-meta">
       <div class="live-pill">
@@ -3053,6 +3083,20 @@ function _actorChips(actors) {
      >${name}</span>`
   ).join('<span style="color:var(--text-3);margin:0 3px;">·</span>');
 }
+
+// ── Theme toggle ───────────────────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('theme-btn');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('fp-theme', t);
+    if (btn) btn.textContent = t === 'light' ? '☽' : '☀';
+  }
+  applyTheme(localStorage.getItem('fp-theme') || 'dark');
+  if (btn) btn.addEventListener('click', function() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+  });
+})();
 </script>
 </body>
 </html>

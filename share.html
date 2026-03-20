@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>(function(){var t=localStorage.getItem('fp-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
 
   <!-- Dynamic OG tags injected by FastAPI -->
   <title>{{OG_TITLE}}</title>
@@ -203,6 +204,24 @@
       .sh-stat { padding: 10px 6px; }
       .sh-stat-val { font-size: 16px; }
     }
+
+    /* ── Light theme ──────────────────────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg:        #f0f4f8;
+      --surface:   #ffffff;
+      --surface-2: #f8fafc;
+      --border:    rgba(0,0,0,0.09);
+      --text-1:    #0d1117;
+      --text-2:    #4b5563;
+      --text-3:    #9ca3af;
+    }
+    .theme-toggle {
+      background: transparent; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--text-3); font-size: 15px; width: 34px; height: 34px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: rgba(220,38,38,0.4); background: rgba(220,38,38,0.07); }
   </style>
 </head>
 <body>
@@ -215,6 +234,7 @@
   <div class="sh-nav-sep"></div>
   <span class="sh-label">INTELLIGENCE CARD</span>
   <a href="/" class="sh-cta">LIVE DASHBOARD →</a>
+  <button id="theme-btn" class="theme-toggle" title="Toggle light/dark mode">☀</button>
 </header>
 
 <div class="sh-shell">
@@ -368,6 +388,20 @@ function copyLink() {
     setTimeout(() => btn.textContent = orig, 1500);
   });
 }
+
+// ── Theme toggle ───────────────────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('theme-btn');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('fp-theme', t);
+    if (btn) btn.textContent = t === 'light' ? '☽' : '☀';
+  }
+  applyTheme(localStorage.getItem('fp-theme') || 'dark');
+  if (btn) btn.addEventListener('click', function() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+  });
+})();
 </script>
 </body>
 </html>

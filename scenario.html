@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>(function(){var t=localStorage.getItem('fp-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
   <title>Scenario Engine · FLASHPOINT</title>
   <meta name="description" content="AI-powered geopolitical scenario analysis. Pick an actor, describe a trigger, get a structured intelligence assessment instantly." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -203,6 +204,23 @@
       .bottom-row { grid-template-columns: 1fr; }
       .footer-row { grid-template-columns: 1fr; }
     }
+
+    /* ── Light theme ──────────────────────────────────────────────────────── */
+    [data-theme="light"] {
+      --bg:      #f0f4f8;
+      --surface: #ffffff;
+      --border:  rgba(0,0,0,0.09);
+      --white:   #0d1117;
+      --muted:   #6b7280;
+      --red-dim: rgba(220,38,38,0.07);
+    }
+    .theme-toggle {
+      background: transparent; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--muted); font-size: 15px; width: 34px; height: 34px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: rgba(220,38,38,0.4); background: rgba(220,38,38,0.07); }
   </style>
 </head>
 <body>
@@ -234,6 +252,7 @@
         <span class="nav-dot"></span>SCENARIO ENGINE
       </a>
     </nav>
+    <button id="theme-btn" class="theme-toggle" title="Toggle light/dark mode">☀</button>
   </header>
 
   <!-- HERO -->
@@ -780,6 +799,20 @@ async function init() {
 }
 
 init();
+
+// ── Theme toggle ───────────────────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('theme-btn');
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('fp-theme', t);
+    if (btn) btn.textContent = t === 'light' ? '☽' : '☀';
+  }
+  applyTheme(localStorage.getItem('fp-theme') || 'dark');
+  if (btn) btn.addEventListener('click', function() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+  });
+})();
 </script>
 </body>
 </html>
