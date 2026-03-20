@@ -258,17 +258,8 @@
       </div>
     </div>
     <div class="form-group" style="margin-bottom:24px;">
-      <div class="chips-label">Quick triggers</div>
-      <div class="chips" id="trigger-chips">
-        <span class="chip" data-t="launches a military strike">Launches military strike</span>
-        <span class="chip" data-t="imposes sweeping economic sanctions">Imposes economic sanctions</span>
-        <span class="chip" data-t="withdraws from a key international treaty">Withdraws from treaty</span>
-        <span class="chip" data-t="closes a critical strait or border crossing">Closes critical strait/border</span>
-        <span class="chip" data-t="declares a state of emergency">Declares state of emergency</span>
-        <span class="chip" data-t="conducts a nuclear weapons test">Conducts nuclear test</span>
-        <span class="chip" data-t="experiences a sudden government collapse">Government collapse</span>
-        <span class="chip" data-t="loses support from its primary military ally">Loses key ally</span>
-      </div>
+      <div class="chips-label" id="chips-label">Quick triggers</div>
+      <div class="chips" id="trigger-chips"></div>
     </div>
     <div class="form-footer">
       <button class="run-btn" id="run-btn" disabled>
@@ -429,6 +420,145 @@ async function loadActors() {
   }
 }
 
+// ── Actor-specific trigger chips ───────────────────────────────────────────
+const ACTOR_TRIGGERS = {
+  'Iran': [
+    ['closes the Strait of Hormuz', 'Closes Strait of Hormuz'],
+    ['conducts a nuclear weapons test', 'Conducts nuclear test'],
+    ['launches ballistic missiles at Israel', 'Launches missiles at Israel'],
+    ['seizes a foreign oil tanker in the Gulf', 'Seizes oil tanker'],
+    ['withdraws from the NPT', 'Withdraws from NPT'],
+    ['cuts oil exports to Western nations', 'Cuts oil exports'],
+  ],
+  'Israel': [
+    ['launches a ground invasion of Lebanon', 'Invades Lebanon'],
+    ['strikes Iranian nuclear facilities', 'Strikes Iran nuclear sites'],
+    ['expands military operations in Gaza', 'Expands Gaza operation'],
+    ['conducts airstrikes in Syria', 'Strikes Syria'],
+    ['declares war on Hezbollah', 'Declares war on Hezbollah'],
+    ['withdraws from ceasefire negotiations', 'Breaks ceasefire talks'],
+  ],
+  'China': [
+    ['blockades Taiwan', 'Blockades Taiwan'],
+    ['invades Taiwan', 'Invades Taiwan'],
+    ['cuts rare earth exports to the US', 'Cuts rare earth exports'],
+    ['seizes disputed islands in the South China Sea', 'Seizes South China Sea islands'],
+    ['imposes economic sanctions on the US', 'Sanctions the US'],
+    ['conducts large-scale military exercises near Taiwan', 'Military exercises near Taiwan'],
+  ],
+  'Russia': [
+    ['threatens the use of tactical nuclear weapons', 'Nuclear weapons threat'],
+    ['cuts natural gas supply to Europe', 'Cuts gas to Europe'],
+    ['launches a major offensive in Ukraine', 'Major Ukraine offensive'],
+    ['conducts a large-scale cyberattack on NATO', 'Cyberattack on NATO'],
+    ['deploys troops to a NATO border country', 'Troops at NATO border'],
+    ['annexes additional Ukrainian territory', 'Annexes more Ukraine'],
+  ],
+  'North Korea': [
+    ['conducts a nuclear weapons test', 'Conducts nuclear test'],
+    ['launches an ICBM over Japan', 'ICBM launch over Japan'],
+    ['attacks South Korean military assets', 'Attacks South Korea'],
+    ['withdraws from the armistice agreement', 'Withdraws from armistice'],
+    ['shares nuclear technology with Iran', 'Shares nukes with Iran'],
+  ],
+  'Hezbollah': [
+    ['launches a full-scale rocket barrage on northern Israel', 'Full rocket barrage on Israel'],
+    ['opens a northern ground front against Israel', 'Opens northern front'],
+    ['receives advanced missile systems from Iran', 'Receives advanced missiles'],
+    ['assassinates a senior Israeli official', 'Assassinates Israeli official'],
+    ['attacks US forces in the region', 'Attacks US forces'],
+  ],
+  'Hamas': [
+    ['breaks the ceasefire agreement', 'Breaks ceasefire'],
+    ['launches a large-scale rocket attack', 'Mass rocket attack'],
+    ['receives a major weapons shipment', 'Receives weapons shipment'],
+    ['executes hostages', 'Executes hostages'],
+    ['carries out a cross-border attack', 'Cross-border attack'],
+  ],
+  'Lebanon': [
+    ['falls into full state collapse', 'State collapse'],
+    ['allows Hezbollah to open a new front', 'Hezbollah opens new front'],
+    ['requests emergency UN intervention', 'Requests UN intervention'],
+    ['experiences a government coup', 'Government coup'],
+    ['defaults on all remaining debt obligations', 'Full debt default'],
+  ],
+  'Ukraine': [
+    ['conducts strikes deep inside Russian territory', 'Strikes Russian territory'],
+    ['loses a major city to Russian forces', 'Loses major city'],
+    ['receives advanced fighter jets from NATO', 'Receives NATO jets'],
+    ['declares martial law and mobilises reserves', 'Full mobilisation'],
+    ['requests NATO Article 5 invocation', 'Invokes NATO Article 5'],
+  ],
+  'Saudi Arabia': [
+    ['cuts oil production unilaterally', 'Cuts oil production'],
+    ['normalises relations with Iran', 'Normalises with Iran'],
+    ['experiences internal political instability', 'Internal instability'],
+    ['acquires nuclear weapons technology', 'Acquires nuclear tech'],
+    ['expels US military from its bases', 'Expels US military'],
+  ],
+  'United States': [
+    ['withdraws military from the Middle East', 'Withdraws from Middle East'],
+    ['imposes sweeping sanctions on China', 'Sanctions China'],
+    ['invokes NATO Article 5', 'Invokes Article 5'],
+    ['cuts military aid to Ukraine', 'Cuts Ukraine aid'],
+    ['deploys carrier strike group to Taiwan Strait', 'Carrier to Taiwan Strait'],
+  ],
+  'Pakistan': [
+    ['conducts a nuclear weapons test', 'Nuclear test'],
+    ['collapses into political crisis', 'Political collapse'],
+    ['cuts off NATO supply routes to Afghanistan', 'Cuts NATO supply routes'],
+    ['escalates conflict on the Indian border', 'India border escalation'],
+  ],
+  'India': [
+    ['escalates military tension with Pakistan', 'Pakistan border escalation'],
+    ['blockades Chinese goods at the border', 'Blocks Chinese goods'],
+    ['conducts a nuclear weapons test', 'Nuclear test'],
+    ['withdraws from trade agreements with China', 'Trade break with China'],
+  ],
+  'Turkey': [
+    ['launches military operations in northern Syria', 'Invades northern Syria'],
+    ['blocks NATO operations in the Black Sea', 'Blocks NATO Black Sea ops'],
+    ['withdraws from NATO', 'Withdraws from NATO'],
+    ['escalates tension with Greece over the Aegean', 'Aegean escalation'],
+  ],
+  'Kurdish fighters': [
+    ['launches attacks inside Turkey', 'Attacks inside Turkey'],
+    ['declares autonomous territory in Syria', 'Declares autonomous region'],
+    ['seizes oil fields in northern Iraq', 'Seizes oil fields'],
+    ['receives advanced weapons from the US', 'Receives US weapons'],
+  ],
+  'Iraq': [
+    ['expels US military forces', 'Expels US forces'],
+    ['falls into civil conflict', 'Civil conflict'],
+    ['allows Iran-backed militias to take control', 'Iran militias take control'],
+    ['collapses economically', 'Economic collapse'],
+  ],
+};
+
+const GENERIC_TRIGGERS = [
+  ['launches a military strike', 'Launches military strike'],
+  ['imposes sweeping economic sanctions', 'Imposes sanctions'],
+  ['withdraws from a key international treaty', 'Withdraws from treaty'],
+  ['closes a critical strait or border crossing', 'Closes strait/border'],
+  ['declares a state of emergency', 'Declares emergency'],
+  ['conducts a nuclear weapons test', 'Conducts nuclear test'],
+  ['experiences a sudden government collapse', 'Government collapse'],
+  ['loses support from its primary military ally', 'Loses key ally'],
+];
+
+function updateChips(actorName) {
+  const container = document.getElementById('trigger-chips');
+  const label     = document.getElementById('chips-label');
+  const key = Object.keys(ACTOR_TRIGGERS).find(k => k.toLowerCase() === actorName.toLowerCase());
+  const list = key ? ACTOR_TRIGGERS[key] : GENERIC_TRIGGERS;
+
+  label.textContent = key ? `Suggested triggers for ${actorName}` : 'Quick triggers';
+
+  container.innerHTML = list.map(([value, label]) =>
+    `<span class="chip" data-t="${value}">${label}</span>`
+  ).join('');
+}
+
 // ── Form validation ────────────────────────────────────────────────────────
 function checkReady() {
   const actor   = document.getElementById('actor-select').value;
@@ -445,8 +575,11 @@ function checkReady() {
   }
 }
 
-document.getElementById('actor-select').addEventListener('change', checkReady);
-document.getElementById('trigger-input').addEventListener('input',  checkReady);
+document.getElementById('actor-select').addEventListener('change', e => {
+  updateChips(e.target.value);
+  checkReady();
+});
+document.getElementById('trigger-input').addEventListener('input', checkReady);
 
 // Chips
 document.getElementById('trigger-chips').addEventListener('click', e => {
@@ -633,6 +766,7 @@ document.getElementById('share-btn').addEventListener('click', () => {
 
 // ── Auto-run from URL params ───────────────────────────────────────────────
 async function init() {
+  updateChips('');   // populate generic chips immediately
   await loadActors();
   const p      = new URLSearchParams(location.search);
   const actorP = p.get('actor');
