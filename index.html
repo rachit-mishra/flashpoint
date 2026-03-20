@@ -2620,9 +2620,13 @@ const COUNTRY_REGION = (() => {
   [31,48,51,268,364,368,376,400,414,422,512,634,682,760,784,792,887
   ].forEach(id => m[id] = 'Middle East');
   // Asia (display name for "Asia Pacific"; incl. New Caledonia 540, Fr. Polynesia 258)
-  [4,36,50,64,96,104,116,144,156,258,344,356,360,392,398,408,410,417,
-   418,458,496,524,540,554,586,598,608,626,702,704,762,764,795,860
+  [36,96,116,156,258,344,360,392,398,408,410,417,
+   418,458,496,540,554,598,608,626,702,704,762,764,795,860
   ].forEach(id => m[id] = 'Asia');
+  // South Asia (India 356, Pakistan 586, Bangladesh 50, Sri Lanka 144, Nepal 524,
+  //   Bhutan 64, Afghanistan 4, Myanmar 104, Maldives 462)
+  [4,50,64,104,144,356,462,524,586
+  ].forEach(id => m[id] = 'South Asia');
   // Africa (incl. Mayotte 175, Réunion 638, W. Sahara 732)
   [12,24,72,108,120,132,140,148,174,175,178,180,204,226,231,232,262,
    266,270,288,324,384,404,426,430,434,450,454,466,478,480,504,508,
@@ -2641,6 +2645,7 @@ const REGION_CENTERS = {
   'Africa':      [ 23.5,  6.5],   // C. African Republic / Sudan border
   'Americas':    [-76.0,  4.5],   // Colombia / Venezuela flashpoint
   'Global':      [ 37.6, 55.7],   // Moscow (Conflict & War catch-all)
+  'South Asia':  [ 78.9, 20.6],   // India centre
 };
 
 let _worldTopo = null; // topology cached after first fetch
@@ -2855,6 +2860,18 @@ async function renderMap(pulseData) {
   if (zIn)    zIn.onclick    = () => svg.transition().duration(320).call(zoom.scaleBy, 1.6);
   if (zOut)   zOut.onclick   = () => svg.transition().duration(320).call(zoom.scaleBy, 0.625);
   if (zReset) zReset.onclick = () => svg.transition().duration(380).call(zoom.transform, d3.zoomIdentity);
+
+  // Auto-zoom to South Asia when theatre is active
+  if (_theatreActive) {
+    const saCenter = projection([75.0, 24.0]); // India centre (shifted west to show Pakistan)
+    if (saCenter) {
+      const scale = 4.5;
+      const tx = W / 2 - saCenter[0] * scale;
+      const ty = H / 2 - saCenter[1] * scale;
+      const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+      svg.transition().duration(600).call(zoom.transform, t);
+    }
+  }
 }
 
 /* ─── Intelligence Feed ───────────────────────────────────────────────── */
@@ -3119,58 +3136,41 @@ function _actorChips(actors) {
 }
 
 // ── South Asia theatre filter ─────────────────────────────────────────────
-const SOUTH_ASIA_KW = [
-  'india','pakistan','bangladesh','sri lanka','nepal','bhutan','maldives',
-  'myanmar','afghanistan','kashmir','ladakh','lac','loc','modi','china',
-  'tibet','raw','isi','bsf','crpf','indian ocean','south asia',
-  'new delhi','islamabad','dhaka','colombo','kathmandu','kabul',
-];
 let _theatreActive = localStorage.getItem('fp-theatre') === 'south-asia';
 let _fullData = null; // stores unfiltered pulse data
 
-function _isSouthAsia(article) {
-  const text = ((article.title || '') + ' ' + (article.insight || '') + ' ' + (article.region || '')).toLowerCase();
-  if (text.includes('south asia')) return true;
-  const actors = (article.actors || []).map(a => a.toLowerCase());
-  return SOUTH_ASIA_KW.some(kw => text.includes(kw) || actors.some(a => a.includes(kw)));
-}
-
-function applyTheatreFilter(data) {
-  if (!_theatreActive) return data;
-  const articles = (data.articles || []).filter(_isSouthAsia);
-  const flashpoints = (data.flashpoints || []).filter(_isSouthAsia);
-  // Filter regional pulse to only South Asia
-  const regional_pulse = (data.regional_pulse || []).filter(
-    r => r.region === 'South Asia' || r.region === 'Asia'
-  );
-  // Recompute signals from filtered articles
-  const sent = { Escalating: 0, Uncertain: 0, Neutral: 0, 'De-escalating': 0 };
-  articles.forEach(a => { if (sent.hasOwnProperty(a.sentiment)) sent[a.sentiment]++; });
-  // Recompute categories from filtered articles
-  const cats = { Nuclear: 0, Conflict: 0, Terrorism: 0, Economic: 0, Diplomacy: 0 };
-  const catArts = { Nuclear: [], Conflict: [], Terrorism: [], Economic: [], Diplomacy: [] };
-  articles.forEach(a => {
-    if (cats.hasOwnProperty(a.category)) {
-      cats[a.category]++;
-      if (catArts[a.category].length < 3) catArts[a.category].push({ title: a.title, url: a.url });
-    }
-  });
-  return { ...data, articles, flashpoints, regional_pulse, sentiment_breakdown: sent,
-           category_breakdown: cats, category_articles: catArts };
-}
-
 function _fullRerender(data) {
-  const view = applyTheatreFilter(data);
-  renderTension(data);  // tension always global
-  renderSignals(view.sentiment_breakdown || {});
-  renderBrief(_theatreActive && view.articles.length > 0
-    ? `South Asia Theatre — ${view.articles.length} intelligence items tracked. ` +
-      (view.articles[0]?.insight || '')
-    : data.brief);
-  renderFlashpoints(view.flashpoints);
-  renderPulse(view.regional_pulse);
-  renderCategories(view.category_breakdown || {}, view.category_articles || {});
-  renderFeed(view.articles || []);
+  if (_theatreActive) {
+    // Use server-computed South Asia data
+    const saData = {
+      tension_index:       data.sa_tension_index ?? data.tension_index,
+      tension_label:       data.sa_tension_label ?? data.tension_label,
+      tension_trend:       data.tension_trend,
+      total_events:        data.sa_total_events ?? 0,
+      articles:            data.sa_articles ?? [],
+      flashpoints:         data.sa_flashpoints ?? [],
+      regional_pulse:      data.sa_regional_pulse ?? [],
+      sentiment_breakdown: data.sa_sentiment_breakdown ?? {},
+      category_breakdown:  data.sa_category_breakdown ?? {},
+      category_articles:   data.sa_category_articles ?? {},
+      brief:               data.sa_brief || '',
+    };
+    renderTension(saData);
+    renderSignals(saData.sentiment_breakdown);
+    renderBrief(saData.brief || `South Asia Theatre — ${saData.articles.length} intelligence items tracked.`);
+    renderFlashpoints(saData.flashpoints);
+    renderPulse(saData.regional_pulse);
+    renderCategories(saData.category_breakdown, saData.category_articles);
+    renderFeed(saData.articles);
+  } else {
+    renderTension(data);
+    renderSignals(data.sentiment_breakdown || {});
+    renderBrief(data.brief);
+    renderFlashpoints(data.flashpoints);
+    renderPulse(data.regional_pulse);
+    renderCategories(data.category_breakdown || {}, data.category_articles || {});
+    renderFeed(data.articles || []);
+  }
   // Show/hide theatre banner
   const banner = document.getElementById('js-theatre-banner');
   if (banner) banner.style.display = _theatreActive ? 'flex' : 'none';
@@ -3186,7 +3186,10 @@ function toggleTheatre() {
   const tagline = document.querySelector('.logo-tagline');
   if (tagline) tagline.textContent = _theatreActive ? 'South Asia Theatre' : 'Global Intelligence Monitor';
 
-  if (_fullData) _fullRerender(_fullData);
+  if (_fullData) {
+    _fullRerender(_fullData);
+    renderMap(_fullData);  // re-render map to zoom/unzoom
+  }
 }
 
 // Init theatre button state

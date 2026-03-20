@@ -57,13 +57,50 @@ MAX_RAW = 5.0 * 2.0 * 1.3  # 13.0
 ALL_REGIONS = ["Europe", "Middle East", "Asia Pacific", "Africa", "Americas", "Conflict & War", "South Asia"]
 REGION_DISPLAY = {"Conflict & War": "Global", "Asia Pacific": "Asia"}
 
-# South Asia theatre — actors used for filtering
-SOUTH_ASIA_ACTORS = {
+# South Asia theatre — actors and keywords for filtering
+# Core SA countries — any mention = South Asia relevant
+SOUTH_ASIA_CORE = {
     "india", "pakistan", "bangladesh", "sri lanka", "nepal", "bhutan", "maldives",
-    "myanmar", "afghanistan", "china", "kashmir", "ladakh", "tibet",
-    "modi", "raw", "isi", "loc", "lac", "bsf", "crpf",
+    "afghanistan", "kashmir", "ladakh",
 }
+# Keywords that only count as SA when paired with a core country or region=South Asia
+SOUTH_ASIA_CONTEXT = {
+    "china", "myanmar", "tibet", "modi", "isi", "bsf", "crpf",
+}
+# Specific SA terms — always count
+SOUTH_ASIA_SPECIFIC = {
+    "indian ocean", "south asia", "new delhi", "islamabad", "dhaka",
+    "colombo", "kathmandu", "kabul", "mumbai", "karachi", "chennai",
+    "kolkata", "hyderabad", "bengaluru", "pune", "arunachal",
+    "siachen", "galwan", "doklam", "aksai chin", "balochistan",
+    "waziristan", "pok", "gilgit", "rohingya", "loc escalat",
+    "lac standoff", "line of control", "line of actual control",
+}
+
 SENTIMENT_ORDER = {"Escalating": 0, "Uncertain": 1, "Neutral": 2, "De-escalating": 3}
+
+
+def _is_south_asia(article: dict) -> bool:
+    """Check if an article is relevant to South Asia theatre."""
+    # Articles tagged South Asia by the feed
+    if article.get("region", "") == "South Asia":
+        return True
+
+    text = (
+        (article.get("title", "") + " " +
+         article.get("summary", "") + " " +
+         article.get("insight", ""))
+    ).lower()
+    actors = [a.lower() for a in article.get("actors", [])]
+    all_text = text + " " + " ".join(actors)
+
+    # Direct match on core SA countries
+    if any(kw in all_text for kw in SOUTH_ASIA_CORE):
+        return True
+    # Direct match on specific SA terms
+    if any(kw in all_text for kw in SOUTH_ASIA_SPECIFIC):
+        return True
+    return False
 
 
 # ── SQLite helpers ──────────────────────────────────────────────────────────────
@@ -596,9 +633,21 @@ async def refresh_data() -> dict:
 
     loop     = asyncio.get_event_loop()
     articles = await loop.run_in_executor(None, get_all_news)
-    enriched = await loop.run_in_executor(None, analyze_batch, articles, 20)
+    # Ensure SA articles get analyzed: take up to 10 SA + up to 20 non-SA
+    sa_pool = [a for a in articles if a.get("region") == "South Asia"][:10]
+    other_pool = [a for a in articles if a.get("region") != "South Asia"][:20]
+    to_analyze = sa_pool + other_pool
+    # Append remaining un-selected articles for fallback data
+    analyzed_set = {id(a) for a in to_analyze}
+    rest = [a for a in articles if id(a) not in analyzed_set]
+    enriched = await loop.run_in_executor(None, analyze_batch, to_analyze + rest, len(to_analyze))
+    # Global brief: use top 12 by severity (not position-biased by SA priority)
+    brief_candidates = sorted(
+        [a for a in enriched if _is_analyzed(a)],
+        key=lambda x: -x.get("severity", 0)
+    )[:12]
     brief_full = await loop.run_in_executor(
-        None, generate_situation_report, enriched[:12]
+        None, generate_situation_report, brief_candidates
     )
 
     tension_idx, tension_label = compute_tension_index(enriched)
@@ -635,6 +684,39 @@ async def refresh_data() -> dict:
                        SENTIMENT_ORDER.get(x.get("sentiment", "Neutral"), 2))
     )[:30]
 
+    # ── South Asia theatre data ──────────────────────────────────────────────
+    sa_articles = [a for a in enriched if _is_south_asia(a)]
+    sa_tension_idx, sa_tension_label = compute_tension_index(sa_articles) if sa_articles else (0, "Stable")
+
+    # Generate SA-specific brief from only SA articles
+    sa_brief = ""
+    if sa_articles:
+        sa_top = sorted(
+            [a for a in sa_articles if _is_analyzed(a)],
+            key=lambda x: -x.get("severity", 0)
+        )[:10]
+        if sa_top:
+            try:
+                sa_brief_full = await loop.run_in_executor(
+                    None, generate_situation_report, sa_top
+                )
+                if sa_brief_full:
+                    clean = re.sub(r'^#{1,6}\s+',        '', sa_brief_full, flags=re.MULTILINE)
+                    clean = re.sub(r'\*{1,3}([^*\n]+)\*{1,3}', r'\1', clean)
+                    clean = re.sub(r'^[-*_]{3,}\s*$',    '', clean,     flags=re.MULTILINE)
+                    clean = re.sub(r'^\s*[-*+]\s+',      '', clean,     flags=re.MULTILINE)
+                    paragraphs = [p.strip() for p in clean.split("\n\n") if p.strip() and len(p.strip()) > 40]
+                    prose = [p for p in paragraphs if "." in p]
+                    sa_brief = prose[0] if prose else (paragraphs[0] if paragraphs else clean.strip()[:600])
+            except Exception as e:
+                print(f"[Flashpoint] SA brief error: {e}")
+
+    sa_feed = sorted(
+        [a for a in sa_articles if _is_analyzed(a)],
+        key=lambda x: (-x.get("severity", 0),
+                       SENTIMENT_ORDER.get(x.get("sentiment", "Neutral"), 2))
+    )[:30]
+
     return {
         "tension_index":       tension_idx,
         "tension_label":       tension_label,
@@ -661,6 +743,31 @@ async def refresh_data() -> dict:
                 "published": a.get("published", ""),
             }
             for a in feed
+        ],
+        # ── South Asia theatre ───────────────────────────────────────────
+        "sa_tension_index":       sa_tension_idx,
+        "sa_tension_label":       sa_tension_label,
+        "sa_brief":               sa_brief,
+        "sa_total_events":        len(sa_articles),
+        "sa_flashpoints":         compute_flashpoints(sa_articles),
+        "sa_regional_pulse":      compute_regional_pulse(sa_articles),
+        "sa_sentiment_breakdown": compute_sentiment_breakdown(sa_articles),
+        "sa_category_breakdown":  compute_category_breakdown(sa_articles),
+        "sa_category_articles":   compute_category_articles(sa_articles),
+        "sa_articles": [
+            {
+                "title":     a.get("title", ""),
+                "url":       a.get("url", "#"),
+                "source":    a.get("source", ""),
+                "region":    REGION_DISPLAY.get(a.get("region", ""), a.get("region", "")),
+                "category":  a.get("category", "Other"),
+                "severity":  a.get("severity", 1),
+                "sentiment": a.get("sentiment", "Neutral"),
+                "actors":    a.get("actors", []),
+                "insight":   a.get("insight", ""),
+                "published": a.get("published", ""),
+            }
+            for a in sa_feed
         ],
     }
 

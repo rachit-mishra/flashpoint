@@ -37,6 +37,9 @@ RSS_FEEDS = [
     {"url": "https://www.dawn.com/feeds/home",                           "source": "Dawn",         "region": "South Asia"},
     {"url": "https://www.scmp.com/rss/91/feed",                          "source": "SCMP",         "region": "South Asia"},
     {"url": "https://www.theguardian.com/world/south-and-central-asia/rss", "source": "The Guardian", "region": "South Asia"},
+    {"url": "https://economictimes.indiatimes.com/news/defence/rssfeeds/6503022.cms", "source": "ET Defence", "region": "South Asia"},
+    {"url": "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms",  "source": "TOI",          "region": "South Asia"},
+    {"url": "https://feeds.feedburner.com/ndtvnews-india-news",            "source": "NDTV",         "region": "South Asia"},
 ]
 
 # Country → (lat, lon) for map plotting
@@ -63,7 +66,7 @@ COUNTRY_COORDS = {
 }
 
 
-def fetch_rss_news(max_per_feed: int = 6) -> list[dict]:
+def fetch_rss_news(max_per_feed: int = 8) -> list[dict]:
     """Fetch articles from all RSS feeds."""
     articles = []
     for feed_cfg in RSS_FEEDS:
