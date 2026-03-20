@@ -1393,6 +1393,19 @@
     </div>
   </header>
 
+  <!-- ── Theatre Banner ──────────────────────────────────────────────── -->
+  <div id="js-theatre-banner" style="display:none;align-items:center;gap:10px;
+    background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);
+    border-radius:var(--r-sm);padding:10px 18px;margin-bottom:16px;
+    font-family:var(--font-m);font-size:10px;letter-spacing:0.12em;color:#f59e0b;">
+    <span style="font-size:14px;">&#9670;</span>
+    <span>SOUTH ASIA THEATRE ACTIVE — Showing India-relevant intelligence only</span>
+    <button onclick="toggleTheatre()" style="margin-left:auto;background:rgba(245,158,11,0.15);
+      border:1px solid rgba(245,158,11,0.3);border-radius:5px;color:#f59e0b;
+      font-family:var(--font-m);font-size:9px;letter-spacing:0.1em;padding:4px 12px;
+      cursor:pointer;">EXIT</button>
+  </div>
+
   <!-- ── NEWS TICKER ──────────────────────────────────────────────────── -->
   <div class="ticker-wrap" id="js-ticker-wrap">
     <div class="ticker-badge">
@@ -2982,18 +2995,10 @@ async function load() {
     const data = await res.json();
     _fullData = data;  // store unfiltered for theatre toggle
 
-    const view = applyTheatreFilter(data);
-
-    renderTension(data);  // tension always uses global data
-    renderSignals(data.sentiment_breakdown || {});
-    renderBrief(data.brief);
-    renderFlashpoints(view.flashpoints);
-    renderPulse(data.regional_pulse);
+    _fullRerender(data);
     renderTicker(data);
-    renderCategories(data.category_breakdown || {}, data.category_articles || {});
     renderTimestamp(data.last_updated);
     renderMap(data);
-    renderFeed(view.articles || []);
 
     // Refresh history chart + sparklines on each pulse update
     fetchHistory();
@@ -3134,7 +3139,41 @@ function applyTheatreFilter(data) {
   if (!_theatreActive) return data;
   const articles = (data.articles || []).filter(_isSouthAsia);
   const flashpoints = (data.flashpoints || []).filter(_isSouthAsia);
-  return { ...data, articles, flashpoints };
+  // Filter regional pulse to only South Asia
+  const regional_pulse = (data.regional_pulse || []).filter(
+    r => r.region === 'South Asia' || r.region === 'Asia'
+  );
+  // Recompute signals from filtered articles
+  const sent = { Escalating: 0, Uncertain: 0, Neutral: 0, 'De-escalating': 0 };
+  articles.forEach(a => { if (sent.hasOwnProperty(a.sentiment)) sent[a.sentiment]++; });
+  // Recompute categories from filtered articles
+  const cats = { Nuclear: 0, Conflict: 0, Terrorism: 0, Economic: 0, Diplomacy: 0 };
+  const catArts = { Nuclear: [], Conflict: [], Terrorism: [], Economic: [], Diplomacy: [] };
+  articles.forEach(a => {
+    if (cats.hasOwnProperty(a.category)) {
+      cats[a.category]++;
+      if (catArts[a.category].length < 3) catArts[a.category].push({ title: a.title, url: a.url });
+    }
+  });
+  return { ...data, articles, flashpoints, regional_pulse, sentiment_breakdown: sent,
+           category_breakdown: cats, category_articles: catArts };
+}
+
+function _fullRerender(data) {
+  const view = applyTheatreFilter(data);
+  renderTension(data);  // tension always global
+  renderSignals(view.sentiment_breakdown || {});
+  renderBrief(_theatreActive && view.articles.length > 0
+    ? `South Asia Theatre — ${view.articles.length} intelligence items tracked. ` +
+      (view.articles[0]?.insight || '')
+    : data.brief);
+  renderFlashpoints(view.flashpoints);
+  renderPulse(view.regional_pulse);
+  renderCategories(view.category_breakdown || {}, view.category_articles || {});
+  renderFeed(view.articles || []);
+  // Show/hide theatre banner
+  const banner = document.getElementById('js-theatre-banner');
+  if (banner) banner.style.display = _theatreActive ? 'flex' : 'none';
 }
 
 function toggleTheatre() {
@@ -3147,33 +3186,7 @@ function toggleTheatre() {
   const tagline = document.querySelector('.logo-tagline');
   if (tagline) tagline.textContent = _theatreActive ? 'South Asia Theatre' : 'Global Intelligence Monitor';
 
-  // Re-render with filtered/unfiltered data
-  if (_fullData) {
-    const view = applyTheatreFilter(_fullData);
-    renderFlashpoints(view.flashpoints);
-    _feedArticles = view.articles || [];
-    _feedActiveCat = 'ALL';
-    document.querySelectorAll('.feed-filter-btn').forEach(b => b.classList.remove('active'));
-    const allBtn = document.querySelector('.feed-filter-btn[data-cat="ALL"]');
-    if (allBtn) allBtn.classList.add('active');
-    _feedVisible = 12;
-    // Re-count
-    const counts = {};
-    _feedArticles.forEach(a => { counts[a.category] = (counts[a.category] || 0) + 1; });
-    const totalEl = document.getElementById('js-feed-total');
-    if (totalEl) totalEl.textContent = `${_feedArticles.length} articles`;
-    ['ALL','Conflict','Diplomacy','Economic','Nuclear','Terrorism'].forEach(cat => {
-      const el = document.getElementById(`js-fc-${cat}`);
-      if (!el) return;
-      el.textContent = cat === 'ALL' ? `(${_feedArticles.length})` : counts[cat] ? `(${counts[cat]})` : '';
-    });
-    document.querySelectorAll('.feed-filter-btn[data-cat]').forEach(btn => {
-      const cat = btn.dataset.cat;
-      if (cat === 'ALL') return;
-      btn.style.display = counts[cat] ? '' : 'none';
-    });
-    _renderFeedGrid();
-  }
+  if (_fullData) _fullRerender(_fullData);
 }
 
 // Init theatre button state
@@ -3186,6 +3199,8 @@ function toggleTheatre() {
   if (_theatreActive) {
     const tagline = document.querySelector('.logo-tagline');
     if (tagline) tagline.textContent = 'South Asia Theatre';
+    const banner = document.getElementById('js-theatre-banner');
+    if (banner) banner.style.display = 'flex';
   }
 })();
 
