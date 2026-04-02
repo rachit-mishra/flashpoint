@@ -877,6 +877,16 @@
     .ticker-item a:hover { color: var(--text-1); }
     .ticker-sep { color: rgba(255,255,255,0.1); }
 
+    /* ── Actor Network Graph ────────────────────────────────────────────── */
+    .row-network { margin-bottom: 18px; }
+    .network-card { padding: 24px; overflow: visible; }
+    .net-legend { display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;align-items:center; }
+    .net-legend-label { font-family:var(--font-m);font-size:9px;letter-spacing:0.1em;color:var(--text-3); }
+    .net-legend-items { display:flex;gap:14px;flex-wrap:wrap; }
+    .net-legend-item { display:flex;align-items:center;gap:6px;
+      font-family:var(--font-m);font-size:9px;color:var(--text-3); }
+    .net-skel { width:100%;height:420px;border-radius:var(--r-sm); }
+
     /* ── Category Breakdown ─────────────────────────────────────────────── */
     .row-cats { margin-bottom: 18px; }
     .cats-grid {
@@ -1620,6 +1630,62 @@
               class="fp-pulse-ring" style="animation-delay:0.3s;"/>
           </svg>
           Active Flashpoint
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACTOR NETWORK GRAPH ──────────────────────────────────────────── -->
+  <div class="row-network">
+    <div class="card network-card">
+      <div class="card-eyebrow" style="margin-bottom:2px;">
+        Actor Network
+        <span style="color:var(--text-3);font-size:9px;font-weight:normal;margin-left:6px;">
+          — co-occurrence in live intelligence · click a node to deep-dive · drag to explore
+        </span>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:14px;">
+        Live graph of geopolitical actor relationships derived from the current intelligence feed —
+        edge weight reflects co-mention intensity, colour indicates relationship type
+      </div>
+
+      <div style="position:relative;">
+        <div id="js-net-skel" class="skel net-skel"></div>
+        <svg id="js-network-svg" width="100%" height="420"
+          style="display:none;border-radius:var(--r-sm);background:rgba(0,0,0,0.15);"></svg>
+        <div id="js-network-tip" style="
+          position:fixed;pointer-events:none;opacity:0;transition:opacity 0.15s;
+          background:var(--surface-2);border:1px solid var(--border);
+          border-radius:var(--r-sm);padding:8px 12px;
+          font-family:var(--font-b);font-size:12px;color:var(--text-1);
+          line-height:1.5;z-index:1000;max-width:210px;box-shadow:0 8px 32px rgba(0,0,0,0.4);
+        "></div>
+      </div>
+
+      <div class="net-legend">
+        <span class="net-legend-label">EDGE TYPE</span>
+        <div class="net-legend-items">
+          <div class="net-legend-item">
+            <div style="width:22px;height:2px;background:rgba(239,68,68,0.85);border-radius:2px;"></div>Conflict
+          </div>
+          <div class="net-legend-item">
+            <div style="width:22px;height:2px;background:rgba(59,130,246,0.85);border-radius:2px;"></div>Diplomatic
+          </div>
+          <div class="net-legend-item">
+            <div style="width:22px;height:2px;background:rgba(34,197,94,0.85);border-radius:2px;"></div>Economic
+          </div>
+          <div class="net-legend-item">
+            <div style="width:22px;height:2px;background:rgba(20,184,166,0.85);border-radius:2px;"></div>Alliance
+          </div>
+        </div>
+        <span class="net-legend-label" style="margin-left:8px;">REGION</span>
+        <div class="net-legend-items">
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div>South Asia</div>
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444;"></div>Middle East</div>
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#3b82f6;"></div>Europe</div>
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;"></div>Asia Pacific</div>
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>Americas</div>
+          <div class="net-legend-item"><div style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></div>Global</div>
         </div>
       </div>
     </div>
@@ -3004,6 +3070,153 @@ document.getElementById('js-feed-more-btn').addEventListener('click', () => {
   _renderFeedGrid();
 });
 
+/* ─── Actor Network Graph ──────────────────────────────────────────────── */
+const NET_REGION_COLOR = {
+  'South Asia':   '#f59e0b',
+  'Middle East':  '#ef4444',
+  'Europe':       '#3b82f6',
+  'Asia Pacific': '#8b5cf6',
+  'Americas':     '#22c55e',
+  'Global':       '#6b7280',
+};
+const NET_EDGE_COLOR = {
+  'conflict':   'rgba(239,68,68,0.7)',
+  'diplomatic': 'rgba(59,130,246,0.6)',
+  'economic':   'rgba(34,197,94,0.6)',
+  'alliance':   'rgba(20,184,166,0.7)',
+};
+const NET_SA_ACTORS = new Set([
+  'India','Pakistan','Bangladesh','Sri Lanka','Afghanistan','Myanmar'
+]);
+
+let _networkSim  = null;
+let _networkData = null;
+
+async function fetchNetwork() {
+  try {
+    const res = await fetch('/api/network');
+    if (!res.ok) return;
+    _networkData = await res.json();
+    renderNetwork(_networkData);
+  } catch(e) { console.warn('Network graph:', e); }
+}
+
+function renderNetwork(graphData) {
+  const svgEl = document.getElementById('js-network-svg');
+  const skelEl = document.getElementById('js-net-skel');
+  if (!svgEl) return;
+
+  const nodes = graphData.nodes || [];
+  const edges = graphData.edges || [];
+
+  if (nodes.length === 0) return;
+
+  // Swap skeleton → svg
+  if (skelEl) skelEl.style.display = 'none';
+  svgEl.style.display = 'block';
+
+  // Stop previous sim
+  if (_networkSim) { _networkSim.stop(); _networkSim = null; }
+  d3.select(svgEl).selectAll('*').remove();
+
+  const W = svgEl.clientWidth || 900;
+  const H = 420;
+
+  const svg = d3.select(svgEl)
+    .attr('viewBox', `0 0 ${W} ${H}`);
+
+  // Glow filter
+  const defs = svg.append('defs');
+  const filt = defs.append('filter').attr('id', 'net-glow').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+  filt.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','3').attr('result','blur');
+  const fm = filt.append('feMerge');
+  fm.append('feMergeNode').attr('in','blur');
+  fm.append('feMergeNode').attr('in','SourceGraphic');
+
+  // Deep-copy for D3 mutation
+  const simNodes = nodes.map(n => ({...n}));
+  const nodeMap  = new Map(simNodes.map(n => [n.id, n]));
+  const simEdges = edges
+    .filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
+    .map(e => ({...e}));
+
+  const maxCount = Math.max(...nodes.map(n => n.count), 1);
+  const rOf  = n => Math.min(26, Math.max(8, 7 + (n.count / maxCount) * 19));
+  const ewOf = e => Math.min(5, 0.7 + (e.weight / Math.max(...edges.map(x=>x.weight),1)) * 3.8);
+
+  const nodeAlpha = n => (_theatreActive && !NET_SA_ACTORS.has(n.id)) ? 0.10 : 1;
+  const edgeAlpha = e => {
+    if (!_theatreActive) return 1;
+    const s = typeof e.source === 'object' ? e.source.id : e.source;
+    const t = typeof e.target === 'object' ? e.target.id : e.target;
+    return (NET_SA_ACTORS.has(s) || NET_SA_ACTORS.has(t)) ? 1 : 0.07;
+  };
+
+  const gE = svg.append('g');
+  const gN = svg.append('g');
+  const gL = svg.append('g');
+
+  const tip = d3.select('#js-network-tip');
+
+  const link = gE.selectAll('line').data(simEdges).enter().append('line')
+    .attr('stroke', e => NET_EDGE_COLOR[e.type] || 'rgba(255,255,255,0.15)')
+    .attr('stroke-width', ewOf)
+    .attr('stroke-opacity', edgeAlpha)
+    .attr('stroke-linecap', 'round');
+
+  const node = gN.selectAll('circle').data(simNodes).enter().append('circle')
+    .attr('r', rOf)
+    .attr('fill', n => NET_REGION_COLOR[n.region] || '#6b7280')
+    .attr('fill-opacity', n => nodeAlpha(n) * 0.15)
+    .attr('stroke', n => NET_REGION_COLOR[n.region] || '#6b7280')
+    .attr('stroke-width', 1.8)
+    .attr('stroke-opacity', nodeAlpha)
+    .attr('filter', n => nodeAlpha(n) > 0.5 ? 'url(#net-glow)' : null)
+    .style('cursor', 'pointer')
+    .on('mouseover', (ev, n) => {
+      tip.style('opacity', 1)
+        .style('left', (ev.pageX + 14) + 'px')
+        .style('top',  (ev.pageY - 32) + 'px')
+        .html(`<strong style="color:${NET_REGION_COLOR[n.region]||'#eef2ff'}">${n.id}</strong><br>
+               <span style="color:#8b95a8">${n.count} mention${n.count!==1?'s':''} · severity ${n.avg_severity}</span><br>
+               <span style="font-size:10px;color:${NET_REGION_COLOR[n.region]||'#6b7280'}">${n.region}</span>`);
+    })
+    .on('mousemove', ev => tip.style('left',(ev.pageX+14)+'px').style('top',(ev.pageY-32)+'px'))
+    .on('mouseout',  () => tip.style('opacity', 0))
+    .on('click', (ev, n) => openCountryPanel(n.id))
+    .call(d3.drag()
+      .on('start', (ev, n) => { if(!ev.active) _networkSim.alphaTarget(0.3).restart(); n.fx=n.x; n.fy=n.y; })
+      .on('drag',  (ev, n) => { n.fx=ev.x; n.fy=ev.y; })
+      .on('end',   (ev, n) => { if(!ev.active) _networkSim.alphaTarget(0); n.fx=null; n.fy=null; }));
+
+  const label = gL.selectAll('text').data(simNodes).enter().append('text')
+    .attr('font-family', 'Space Mono, monospace')
+    .attr('font-size', n => n.count > 3 ? 9 : 8)
+    .attr('fill', n => NET_REGION_COLOR[n.region] || '#6b7280')
+    .attr('fill-opacity', nodeAlpha)
+    .attr('text-anchor', 'middle')
+    .attr('pointer-events', 'none')
+    .text(n => n.id);
+
+  _networkSim = d3.forceSimulation(simNodes)
+    .force('link', d3.forceLink(simEdges).id(n => n.id)
+      .distance(e => 80 + (1/Math.max(e.weight,1))*50).strength(0.45))
+    .force('charge', d3.forceManyBody().strength(-260))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collide', d3.forceCollide().radius(n => rOf(n)+14))
+    .on('tick', () => {
+      link
+        .attr('x1', e => e.source.x).attr('y1', e => e.source.y)
+        .attr('x2', e => e.target.x).attr('y2', e => e.target.y);
+      node
+        .attr('cx', n => n.x = Math.max(rOf(n), Math.min(W-rOf(n), n.x)))
+        .attr('cy', n => n.y = Math.max(rOf(n), Math.min(H-rOf(n), n.y)));
+      label
+        .attr('x', n => n.x)
+        .attr('y', n => n.y + rOf(n) + 12);
+    });
+}
+
 /* ─── Fetch & render ──────────────────────────────────────────────────── */
 async function load() {
   try {
@@ -3016,6 +3229,7 @@ async function load() {
     renderTicker(data);
     renderTimestamp(data.last_updated);
     renderMap(data);
+    fetchNetwork();
 
     // Refresh history chart + sparklines on each pulse update
     fetchHistory();
@@ -3190,6 +3404,7 @@ function toggleTheatre() {
     _fullRerender(_fullData);
     renderMap(_fullData);  // re-render map to zoom/unzoom
   }
+  if (_networkData) renderNetwork(_networkData);  // re-render network with theatre opacity
 }
 
 // Init theatre button state

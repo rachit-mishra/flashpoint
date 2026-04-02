@@ -79,6 +79,121 @@ SOUTH_ASIA_SPECIFIC = {
 
 SENTIMENT_ORDER = {"Escalating": 0, "Uncertain": 1, "Neutral": 2, "De-escalating": 3}
 
+# ── Actor Network ────────────────────────────────────────────────────────────────
+ACTOR_KEYWORDS: dict[str, list[str]] = {
+    "India":        ["india", "indian", "modi", "new delhi"],
+    "Pakistan":     ["pakistan", "pakistani", "islamabad"],
+    "China":        ["china", "chinese", "beijing", "xi jinping", "pla", "ccp"],
+    "USA":          ["united states", "america", "american", "washington", "pentagon"],
+    "Russia":       ["russia", "russian", "moscow", "putin", "kremlin"],
+    "Iran":         ["iran", "iranian", "tehran", "khamenei", "irgc"],
+    "Israel":       ["israel", "israeli", "tel aviv", "netanyahu", "idf"],
+    "Ukraine":      ["ukraine", "ukrainian", "kyiv", "zelensky"],
+    "NATO":         ["nato", "north atlantic treaty"],
+    "Saudi Arabia": ["saudi", "riyadh", "saudi arabia"],
+    "Turkey":       ["turkey", "turkish", "ankara", "erdogan"],
+    "North Korea":  ["north korea", "pyongyang", "kim jong"],
+    "Japan":        ["japan", "japanese", "tokyo"],
+    "Afghanistan":  ["afghanistan", "taliban", "kabul"],
+    "Bangladesh":   ["bangladesh", "dhaka"],
+    "Sri Lanka":    ["sri lanka", "colombo"],
+    "Myanmar":      ["myanmar", "burma"],
+    "Hamas":        ["hamas", "gaza"],
+    "Hezbollah":    ["hezbollah"],
+    "EU":           ["european union", "brussels"],
+    "UN":           ["united nations", "un security council"],
+}
+
+ACTOR_REGIONS: dict[str, str] = {
+    "India": "South Asia", "Pakistan": "South Asia", "Bangladesh": "South Asia",
+    "Sri Lanka": "South Asia", "Afghanistan": "South Asia", "Myanmar": "South Asia",
+    "China": "Asia Pacific", "Japan": "Asia Pacific", "North Korea": "Asia Pacific",
+    "Russia": "Europe", "Ukraine": "Europe", "EU": "Europe", "NATO": "Europe",
+    "USA": "Americas",
+    "Iran": "Middle East", "Israel": "Middle East", "Hamas": "Middle East",
+    "Hezbollah": "Middle East", "Saudi Arabia": "Middle East", "Turkey": "Middle East",
+    "UN": "Global",
+}
+
+_CONFLICT_KW  = {"war","attack","strike","conflict","clash","troops","military",
+                  "missile","bomb","kill","invasion","offensive","airstrike","shelling","fired"}
+_ECONOMIC_KW  = {"trade","investment","oil","supply","export","tariff","sanction",
+                  "economic","currency","debt","energy","finance"}
+_ALLIANCE_KW  = {"ally","partner","cooperation","joint","exercise","alliance","strategic"}
+_DIPLOMAT_KW  = {"talks","meeting","summit","agreement","deal","treaty","visit",
+                  "diplomatic","negotiation","dialogue","ceasefire","accord"}
+
+
+def _detect_actors(text: str) -> list[str]:
+    tl = text.lower()
+    return [actor for actor, kws in ACTOR_KEYWORDS.items() if any(kw in tl for kw in kws)]
+
+
+def _edge_type(article: dict) -> str:
+    cat  = article.get("category", "")
+    text = (article.get("title", "") + " " + article.get("insight", "")).lower()
+    words = set(text.split())
+    if cat in ("Conflict", "Nuclear", "Terrorism") or words & _CONFLICT_KW:
+        return "conflict"
+    if words & _ALLIANCE_KW:
+        return "alliance"
+    if words & _DIPLOMAT_KW or cat == "Diplomacy":
+        return "diplomatic"
+    if words & _ECONOMIC_KW or cat == "Economic":
+        return "economic"
+    return "diplomatic"
+
+
+def compute_actor_network(articles: list[dict]) -> dict:
+    """Build actor co-occurrence network from articles."""
+    from collections import defaultdict
+    node_counts:   dict[str, int]   = defaultdict(int)
+    node_severity: dict[str, list]  = defaultdict(list)
+    edge_raw:      dict[tuple, dict] = {}
+
+    for a in articles:
+        if not _is_analyzed(a):
+            continue
+        text   = a.get("title", "") + " " + a.get("insight", "")
+        actors = _detect_actors(text)
+        sev    = a.get("severity", 1)
+        etype  = _edge_type(a)
+
+        for actor in actors:
+            node_counts[actor]   += 1
+            node_severity[actor].append(sev)
+
+        for i in range(len(actors)):
+            for j in range(i + 1, len(actors)):
+                key = tuple(sorted([actors[i], actors[j]]))
+                if key not in edge_raw:
+                    edge_raw[key] = {"weight": 0, "types": {}}
+                edge_raw[key]["weight"] += 1
+                edge_raw[key]["types"][etype] = edge_raw[key]["types"].get(etype, 0) + 1
+
+    nodes = [
+        {
+            "id":           actor,
+            "region":       ACTOR_REGIONS.get(actor, "Global"),
+            "count":        count,
+            "avg_severity": round(sum(node_severity[actor]) / len(node_severity[actor]), 2),
+        }
+        for actor, count in node_counts.items()
+    ]
+
+    edges = [
+        {
+            "source": k[0],
+            "target": k[1],
+            "weight": v["weight"],
+            "type":   max(v["types"], key=v["types"].get),
+        }
+        for k, v in edge_raw.items()
+        if k[0] in node_counts and k[1] in node_counts
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
 
 def _is_south_asia(article: dict) -> bool:
     """Check if an article is relevant to South Asia theatre."""
@@ -1064,6 +1179,20 @@ async def get_pulse():
             if "data" not in _cache:
                 _cache["data"] = await refresh_data()
     return JSONResponse(content=_cache["data"])
+
+
+@app.get("/api/network")
+async def get_network():
+    """Return actor co-occurrence network derived from cached articles."""
+    data = _cache.get("data", {})
+    seen: set[str] = set()
+    combined: list[dict] = []
+    for a in data.get("articles", []) + data.get("sa_articles", []):
+        url = a.get("url", "")
+        if url not in seen:
+            seen.add(url)
+            combined.append(a)
+    return JSONResponse(compute_actor_network(combined))
 
 
 @app.get("/api/history")
