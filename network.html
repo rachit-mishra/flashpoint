@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>(function(){var t=localStorage.getItem('fp-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+  <title>Actor Network · FLASHPOINT</title>
+  <meta name="description" content="Live geopolitical actor network — who is co-mentioned with whom, in what context, weighted by intelligence feed intensity." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #080c14;
+      --surface:  #0d1220;
+      --surface2: #111827;
+      --border:   #1e2a3a;
+      --red:      #dc2626;
+      --red-dim:  rgba(220,38,38,0.12);
+      --white:    #eef2ff;
+      --muted:    #4b5563;
+      --muted2:   #8b95a8;
+      --font-d:   'Space Grotesk', sans-serif;
+      --font-m:   'Space Mono', monospace;
+    }
+    html, body { background: var(--bg); color: var(--white); font-family: var(--font-d); min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Shell ── */
+    .shell { max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 22px; border-bottom: 1px solid var(--border); margin-bottom: 36px;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-mark {
+      width: 40px; height: 40px; background: var(--red); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 22px; height: 22px; }
+    .logo-copy { display: flex; flex-direction: column; gap: 2px; }
+    .logo-name { font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
+    .logo-tagline { font-family: var(--font-m); font-size: 9.5px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+    .header-nav { display: flex; align-items: center; gap: 8px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 7px; padding: 6px 14px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-family: var(--font-m); font-size: 11px; color: var(--muted);
+      letter-spacing: 0.06em; transition: all 0.2s;
+    }
+    .nav-link:hover { background: var(--red-dim); border-color: rgba(220,38,38,0.55); color: var(--white); }
+    .nav-link.active { background: var(--red-dim); border-color: rgba(220,38,38,0.4); color: var(--white); }
+    .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+    .nav-link.active .nav-dot { background: var(--red); }
+
+    /* ── Hero ── */
+    .hero { margin-bottom: 28px; }
+    .hero-eyebrow {
+      font-family: var(--font-m); font-size: 11px; letter-spacing: 0.14em;
+      color: var(--red); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .hero-eyebrow::before { content: ''; display: inline-block; width: 20px; height: 1px; background: var(--red); }
+    .hero-title { font-size: 32px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 10px; }
+    .hero-desc { color: var(--muted2); font-size: 14px; line-height: 1.65; max-width: 600px; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; gap: 28px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;
+    }
+    .stat { display: flex; flex-direction: column; gap: 3px; }
+    .stat-val { font-size: 22px; font-weight: 700; font-family: var(--font-m); color: var(--white); }
+    .stat-key { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+    .stats-divider { width: 1px; height: 32px; background: var(--border); }
+    .stats-updated { font-family: var(--font-m); font-size: 10px; color: var(--muted); margin-left: auto; }
+
+    /* ── Main layout ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar { display: flex; flex-direction: column; gap: 12px; }
+    .sidebar-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; overflow: hidden;
+    }
+    .sidebar-label {
+      font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 12px;
+    }
+
+    /* Region filters */
+    .region-filters { display: flex; flex-direction: column; gap: 6px; }
+    .region-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: 7px; border: 1px solid transparent;
+      cursor: pointer; transition: all 0.15s; background: transparent;
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.06em; color: var(--muted2);
+    }
+    .region-btn:hover { background: rgba(255,255,255,0.04); color: var(--white); }
+    .region-btn.active { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); color: var(--white); }
+    .region-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .region-btn-left { display: flex; align-items: center; gap: 8px; }
+    .region-count { font-size: 10px; color: var(--muted); }
+
+    /* Actor list */
+    .actor-list { display: flex; flex-direction: column; gap: 4px; max-height: 380px; overflow-y: auto; }
+    .actor-list::-webkit-scrollbar { width: 3px; }
+    .actor-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .actor-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+      transition: background 0.12s;
+    }
+    .actor-item:hover { background: rgba(255,255,255,0.05); }
+    .actor-item-left { display: flex; align-items: center; gap: 8px; }
+    .actor-pip { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .actor-name { font-size: 12px; color: var(--muted2); }
+    .actor-badge {
+      font-family: var(--font-m); font-size: 9px; color: var(--muted);
+      background: rgba(255,255,255,0.04); border-radius: 4px; padding: 2px 6px;
+    }
+
+    /* ── Graph panel ── */
+    .graph-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden; position: relative;
+    }
+    .graph-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .graph-header-label {
+      font-family: var(--font-m); font-size: 9px; letter-spacing: 0.12em; color: var(--muted);
+    }
+    .graph-controls { display: flex; gap: 8px; margin-left: auto; }
+    .ctrl-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); font-family: var(--font-m); font-size: 11px;
+      padding: 5px 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .ctrl-btn:hover { border-color: rgba(220,38,38,0.5); color: var(--white); }
+    .ctrl-btn.active { background: var(--red-dim); border-color: rgba(220,38,38,0.4); color: var(--white); }
+
+    #graph-svg {
+      display: block; width: 100%; background: rgba(0,0,0,0.2);
+      cursor: grab;
+    }
+    #graph-svg:active { cursor: grabbing; }
+
+    /* Tooltip */
+    #net-tip {
+      position: fixed; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+      font-family: var(--font-d); font-size: 12px; color: var(--white);
+      line-height: 1.55; z-index: 999; max-width: 220px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    /* Legend */
+    .graph-legend {
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+    }
+    .legend-label { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.1em; color: var(--muted); }
+    .legend-items { display: flex; gap: 14px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-m); font-size: 9px; color: var(--muted2); }
+
+    /* ── Actor detail drawer ── */
+    #actor-drawer {
+      position: fixed; top: 0; right: -380px; width: 360px; height: 100vh;
+      background: var(--surface); border-left: 1px solid var(--border);
+      z-index: 500; transition: right 0.28s cubic-bezier(0.16,1,0.3,1);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #actor-drawer.open { right: 0; }
+    #drawer-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499;
+    }
+    #drawer-overlay.open { display: block; }
+    .drawer-header {
+      padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .drawer-actor-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .drawer-region { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.08em; }
+    .drawer-close {
+      background: transparent; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); font-size: 14px; width: 30px; height: 30px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .drawer-close:hover { border-color: rgba(220,38,38,0.5); color: var(--white); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 20px; }
+    .drawer-body::-webkit-scrollbar { width: 4px; }
+    .drawer-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .drawer-section-label { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+    .drawer-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+    .drawer-stat { display: flex; flex-direction: column; gap: 3px; }
+    .drawer-stat-val { font-size: 20px; font-weight: 700; }
+    .drawer-stat-key { font-family: var(--font-m); font-size: 9px; color: var(--muted); letter-spacing: 0.08em; }
+    .drawer-summary { font-size: 13px; color: var(--muted2); line-height: 1.65; }
+    .drawer-loading { font-family: var(--font-m); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-align: center; padding: 32px 0; }
+    .drawer-article { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .drawer-article:last-child { border-bottom: none; }
+    .drawer-article-title { font-size: 12px; color: var(--muted2); margin-bottom: 4px; line-height: 1.4; }
+    .drawer-article-title a { color: inherit; text-decoration: none; }
+    .drawer-article-title a:hover { color: var(--white); }
+    .drawer-article-meta { font-family: var(--font-m); font-size: 9px; color: var(--muted); }
+    .drawer-connections { display: flex; flex-direction: column; gap: 8px; }
+    .conn-row { display: flex; align-items: center; gap: 10px; }
+    .conn-actor { font-size: 12px; font-weight: 500; flex: 1; }
+    .conn-type { font-family: var(--font-m); font-size: 9px; padding: 2px 8px; border-radius: 4px; }
+
+    @media (max-width: 860px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; }
+      .sidebar-card { flex: 1; min-width: 180px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <a href="/" class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      </div>
+      <div class="logo-copy">
+        <div class="logo-name">FLASHPOINT</div>
+        <div class="logo-tagline">Actor Network</div>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/" class="nav-link"><span class="nav-dot"></span>Dashboard</a>
+      <a href="/intel" class="nav-link"><span class="nav-dot"></span>Intelligence Explorer</a>
+      <a href="/network" class="nav-link active"><span class="nav-dot"></span>Actor Network</a>
+      <a href="/scenario" class="nav-link"><span class="nav-dot"></span>Scenario Engine</a>
+    </nav>
+  </header>
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="hero-eyebrow">Live Intelligence Graph</div>
+    <h1 class="hero-title">Actor Network</h1>
+    <p class="hero-desc">
+      Real-time co-occurrence graph of geopolitical actors derived from the live intelligence feed.
+      Edge weight reflects how often two actors appear together — edge colour indicates the dominant relationship type.
+      Baseline connections represent known geopolitical ties; live articles strengthen or reclassify them.
+    </p>
+  </div>
+
+  <!-- ── STATS BAR ── -->
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-val" id="stat-actors">—</span>
+      <span class="stat-key">Actors Tracked</span>
+    </div>
+    <div class="stats-divider"></div>
+    <div class="stat">
+      <span class="stat-val" id="stat-edges">—</span>
+      <span class="stat-key">Connections</span>
+    </div>
+    <div class="stats-divider"></div>
+    <div class="stat">
+      <span class="stat-val" id="stat-conflict">—</span>
+      <span class="stat-key">Conflict Edges</span>
+    </div>
+    <div class="stats-divider"></div>
+    <div class="stat">
+      <span class="stat-val" id="stat-live">—</span>
+      <span class="stat-key">Live Articles</span>
+    </div>
+    <span class="stats-updated" id="stat-updated"></span>
+  </div>
+
+  <!-- ── MAIN GRID ── -->
+  <div class="main-grid">
+
+    <!-- ── SIDEBAR ── -->
+    <div class="sidebar">
+
+      <!-- Region filter -->
+      <div class="sidebar-card">
+        <div class="sidebar-label">Filter by Region</div>
+        <div class="region-filters" id="region-filters">
+          <button class="region-btn active" data-region="All" onclick="setRegionFilter('All')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#6b7280;"></div>All Regions
+            </div>
+            <span class="region-count" id="rc-All">—</span>
+          </button>
+          <button class="region-btn" data-region="South Asia" onclick="setRegionFilter('South Asia')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#f59e0b;"></div>South Asia
+            </div>
+            <span class="region-count" id="rc-South Asia">—</span>
+          </button>
+          <button class="region-btn" data-region="Middle East" onclick="setRegionFilter('Middle East')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#ef4444;"></div>Middle East
+            </div>
+            <span class="region-count" id="rc-Middle East">—</span>
+          </button>
+          <button class="region-btn" data-region="Europe" onclick="setRegionFilter('Europe')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#3b82f6;"></div>Europe
+            </div>
+            <span class="region-count" id="rc-Europe">—</span>
+          </button>
+          <button class="region-btn" data-region="Asia Pacific" onclick="setRegionFilter('Asia Pacific')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#8b5cf6;"></div>Asia Pacific
+            </div>
+            <span class="region-count" id="rc-Asia Pacific">—</span>
+          </button>
+          <button class="region-btn" data-region="Americas" onclick="setRegionFilter('Americas')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#22c55e;"></div>Americas
+            </div>
+            <span class="region-count" id="rc-Americas">—</span>
+          </button>
+          <button class="region-btn" data-region="Global" onclick="setRegionFilter('Global')">
+            <div class="region-btn-left">
+              <div class="region-dot" style="background:#6b7280;"></div>Global Bodies
+            </div>
+            <span class="region-count" id="rc-Global">—</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Actor list -->
+      <div class="sidebar-card">
+        <div class="sidebar-label">Actors — by mentions</div>
+        <div class="actor-list" id="actor-list"></div>
+      </div>
+
+    </div>
+
+    <!-- ── GRAPH PANEL ── -->
+    <div class="graph-panel">
+      <div class="graph-header">
+        <span class="graph-header-label">LIVE CO-OCCURRENCE NETWORK · DRAG TO EXPLORE · SCROLL TO ZOOM · CLICK TO DEEP-DIVE</span>
+        <div class="graph-controls">
+          <button class="ctrl-btn" id="btn-sa" onclick="toggleSAFocus()">South Asia Focus</button>
+          <button class="ctrl-btn" id="btn-conflict" onclick="toggleConflictOnly()">Conflict Only</button>
+          <button class="ctrl-btn" onclick="resetZoom()">Reset View</button>
+        </div>
+      </div>
+
+      <svg id="graph-svg" height="580"></svg>
+
+      <div class="graph-legend">
+        <span class="legend-label">EDGE TYPE</span>
+        <div class="legend-items">
+          <div class="legend-item"><div style="width:22px;height:2px;background:rgba(239,68,68,0.85);border-radius:2px;"></div>Conflict</div>
+          <div class="legend-item"><div style="width:22px;height:2px;background:rgba(59,130,246,0.85);border-radius:2px;"></div>Diplomatic</div>
+          <div class="legend-item"><div style="width:22px;height:2px;background:rgba(34,197,94,0.85);border-radius:2px;"></div>Economic</div>
+          <div class="legend-item"><div style="width:22px;height:2px;background:rgba(20,184,166,0.85);border-radius:2px;"></div>Alliance</div>
+        </div>
+        <span class="legend-label" style="margin-left:12px;">NODE SIZE</span>
+        <span class="legend-items" style="font-family:var(--font-m);font-size:9px;color:var(--muted);">= mention frequency in live feed</span>
+        <span class="legend-items" style="font-family:var(--font-m);font-size:9px;color:var(--muted);margin-left:8px;">· dashed border = baseline only (no live articles yet)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── ACTOR DRAWER ── -->
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
+<div id="actor-drawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-actor-name" id="drawer-name">—</div>
+      <div class="drawer-region" id="drawer-region" style="color:var(--muted);"></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div id="drawer-loading" class="drawer-loading">GATHERING INTELLIGENCE…</div>
+    <div id="drawer-content" style="display:none;">
+      <div>
+        <div class="drawer-section-label">Signal Metrics</div>
+        <div class="drawer-stats" id="drawer-stats"></div>
+      </div>
+      <div>
+        <div class="drawer-section-label">Intelligence Assessment</div>
+        <div class="drawer-summary" id="drawer-summary"></div>
+      </div>
+      <div>
+        <div class="drawer-section-label">Connections in current feed</div>
+        <div class="drawer-connections" id="drawer-connections"></div>
+      </div>
+      <div>
+        <div class="drawer-section-label">Recent Intelligence</div>
+        <div id="drawer-articles"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="net-tip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+/* ── Colour maps ───────────────────────────────────────────────────────── */
+const REGION_COLOR = {
+  'South Asia':   '#f59e0b',
+  'Middle East':  '#ef4444',
+  'Europe':       '#3b82f6',
+  'Asia Pacific': '#8b5cf6',
+  'Americas':     '#22c55e',
+  'Global':       '#6b7280',
+};
+const EDGE_COLOR = {
+  'conflict':   'rgba(239,68,68,0.75)',
+  'diplomatic': 'rgba(59,130,246,0.65)',
+  'economic':   'rgba(34,197,94,0.65)',
+  'alliance':   'rgba(20,184,166,0.75)',
+};
+const SA_ACTORS = new Set(['India','Pakistan','Bangladesh','Sri Lanka','Afghanistan','Myanmar']);
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+let _graphData    = null;
+let _sim          = null;
+let _activeRegion = 'All';
+let _saFocus      = false;
+let _conflictOnly = false;
+let _zoomBehavior = null;
+let _svgG         = null;   // main transform group
+
+/* ── Filters ───────────────────────────────────────────────────────────── */
+function setRegionFilter(region) {
+  _activeRegion = region;
+  document.querySelectorAll('.region-btn').forEach(b => b.classList.toggle('active', b.dataset.region === region));
+  if (_graphData) applyFilters();
+}
+function toggleSAFocus() {
+  _saFocus = !_saFocus;
+  document.getElementById('btn-sa').classList.toggle('active', _saFocus);
+  if (_graphData) applyFilters();
+}
+function toggleConflictOnly() {
+  _conflictOnly = !_conflictOnly;
+  document.getElementById('btn-conflict').classList.toggle('active', _conflictOnly);
+  if (_graphData) applyFilters();
+}
+function resetZoom() {
+  const svg = d3.select('#graph-svg');
+  svg.transition().duration(500).call(_zoomBehavior.transform, d3.zoomIdentity);
+}
+
+function applyFilters() {
+  if (!_svgG) return;
+  const nodes = _graphData.nodes;
+  const edges = _graphData.edges;
+
+  _svgG.selectAll('circle').attr('stroke-opacity', n => _nodeOpacity(n)).attr('fill-opacity', n => _nodeOpacity(n) * 0.15);
+  _svgG.selectAll('.node-label').attr('fill-opacity', n => _nodeOpacity(n));
+  _svgG.selectAll('line').attr('stroke-opacity', e => _edgeOpacity(e)).style('display', e => _edgeVisible(e) ? null : 'none');
+}
+
+function _nodeOpacity(n) {
+  if (_activeRegion !== 'All' && n.region !== _activeRegion) return 0.08;
+  if (_saFocus && !SA_ACTORS.has(n.id)) return 0.1;
+  return 1;
+}
+function _edgeOpacity(e) {
+  const sid = typeof e.source === 'object' ? e.source.id : e.source;
+  const tid = typeof e.target === 'object' ? e.target.id : e.target;
+  const sn  = _graphData.nodes.find(n => n.id === sid);
+  const tn  = _graphData.nodes.find(n => n.id === tid);
+  if (_activeRegion !== 'All' && sn?.region !== _activeRegion && tn?.region !== _activeRegion) return 0.06;
+  if (_saFocus && !SA_ACTORS.has(sid) && !SA_ACTORS.has(tid)) return 0.06;
+  return 0.85;
+}
+function _edgeVisible(e) {
+  if (!_conflictOnly) return true;
+  return e.type === 'conflict';
+}
+
+/* ── Render graph ──────────────────────────────────────────────────────── */
+function renderGraph(data) {
+  _graphData = data;
+  const svgEl = document.getElementById('graph-svg');
+  const W = svgEl.clientWidth || 980;
+  const H = 580;
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  if (_sim) { _sim.stop(); _sim = null; }
+  d3.select(svgEl).selectAll('*').remove();
+
+  const svg = d3.select(svgEl);
+
+  // Defs
+  const defs = svg.append('defs');
+  const filt = defs.append('filter').attr('id', 'glow').attr('x','-60%').attr('y','-60%').attr('width','220%').attr('height','220%');
+  filt.append('feGaussianBlur').attr('in','SourceGraphic').attr('stdDeviation','4').attr('result','blur');
+  const fm = filt.append('feMerge');
+  fm.append('feMergeNode').attr('in','blur');
+  fm.append('feMergeNode').attr('in','SourceGraphic');
+
+  // Zoom
+  const g = svg.append('g');
+  _svgG = g;
+  _zoomBehavior = d3.zoom().scaleExtent([0.3, 4]).on('zoom', ev => g.attr('transform', ev.transform));
+  svg.call(_zoomBehavior);
+
+  // Deep-copy
+  const simNodes = data.nodes.map(n => ({...n}));
+  const nodeMap  = new Map(simNodes.map(n => [n.id, n]));
+  const simEdges = data.edges
+    .filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
+    .map(e => ({...e}));
+
+  const maxCount = Math.max(...data.nodes.map(n => n.count), 1);
+  const rOf  = n => Math.min(30, Math.max(8, 6 + (n.count / maxCount) * 22));
+  const ewOf = e => {
+    const maxW = Math.max(...data.edges.map(x => x.weight), 1);
+    return Math.min(6, 0.8 + (e.weight / maxW) * 4.5);
+  };
+
+  // Edges
+  const link = g.append('g').selectAll('line').data(simEdges).enter().append('line')
+    .attr('stroke', e => EDGE_COLOR[e.type] || 'rgba(255,255,255,0.15)')
+    .attr('stroke-width', ewOf)
+    .attr('stroke-opacity', e => _edgeOpacity(e))
+    .attr('stroke-dasharray', e => e.baseline && e.weight <= 1 ? '4 3' : null)
+    .attr('stroke-linecap', 'round')
+    .style('display', e => _edgeVisible(e) ? null : 'none');
+
+  // Nodes
+  const tip = d3.select('#net-tip');
+  const node = g.append('g').selectAll('circle').data(simNodes).enter().append('circle')
+    .attr('r', rOf)
+    .attr('fill', n => REGION_COLOR[n.region] || '#6b7280')
+    .attr('fill-opacity', n => _nodeOpacity(n) * 0.15)
+    .attr('stroke', n => REGION_COLOR[n.region] || '#6b7280')
+    .attr('stroke-width', n => n.baseline ? 1 : 1.8)
+    .attr('stroke-dasharray', n => n.baseline ? '3 2' : null)
+    .attr('stroke-opacity', n => _nodeOpacity(n))
+    .attr('filter', n => _nodeOpacity(n) > 0.5 ? 'url(#glow)' : null)
+    .style('cursor', 'pointer')
+    .on('mouseover', (ev, n) => {
+      const conns = data.edges.filter(e => {
+        const s = typeof e.source==='object'?e.source.id:e.source;
+        const t = typeof e.target==='object'?e.target.id:e.target;
+        return s===n.id || t===n.id;
+      });
+      tip.style('opacity',1)
+        .style('left',(ev.pageX+14)+'px').style('top',(ev.pageY-36)+'px')
+        .html(`<strong style="color:${REGION_COLOR[n.region]||'#eef2ff'}">${n.id}</strong><br>
+               <span style="color:#8b95a8">${n.count} mention${n.count!==1?'s':''} · severity ${n.avg_severity}</span><br>
+               <span style="color:#4b5563;font-size:10px;">${conns.length} connection${conns.length!==1?'s':''} · ${n.region}</span>`);
+    })
+    .on('mousemove', ev => tip.style('left',(ev.pageX+14)+'px').style('top',(ev.pageY-36)+'px'))
+    .on('mouseout', () => tip.style('opacity', 0))
+    .on('click', (ev, n) => { ev.stopPropagation(); openDrawer(n, data); })
+    .call(d3.drag()
+      .on('start', (ev,n) => { if(!ev.active) _sim.alphaTarget(0.3).restart(); n.fx=n.x; n.fy=n.y; })
+      .on('drag',  (ev,n) => { n.fx=ev.x; n.fy=ev.y; })
+      .on('end',   (ev,n) => { if(!ev.active) _sim.alphaTarget(0); n.fx=null; n.fy=null; }));
+
+  // Labels
+  const label = g.append('g').selectAll('text').data(simNodes).enter().append('text')
+    .attr('class', 'node-label')
+    .attr('font-family', 'Space Mono, monospace')
+    .attr('font-size', n => n.count > 3 ? 9.5 : 8.5)
+    .attr('fill', n => REGION_COLOR[n.region] || '#6b7280')
+    .attr('fill-opacity', n => _nodeOpacity(n))
+    .attr('text-anchor', 'middle')
+    .attr('pointer-events', 'none')
+    .text(n => n.id);
+
+  // Simulation
+  _sim = d3.forceSimulation(simNodes)
+    .force('link', d3.forceLink(simEdges).id(n=>n.id)
+      .distance(e => 90 + (1/Math.max(e.weight,1))*60).strength(0.4))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collide', d3.forceCollide().radius(n => rOf(n)+16))
+    .on('tick', () => {
+      link
+        .attr('x1',e=>e.source.x).attr('y1',e=>e.source.y)
+        .attr('x2',e=>e.target.x).attr('y2',e=>e.target.y);
+      node
+        .attr('cx',n=>n.x=Math.max(rOf(n),Math.min(W-rOf(n),n.x)))
+        .attr('cy',n=>n.y=Math.max(rOf(n),Math.min(H-rOf(n),n.y)));
+      label.attr('x',n=>n.x).attr('y',n=>n.y+rOf(n)+13);
+    });
+}
+
+/* ── Sidebar population ────────────────────────────────────────────────── */
+function populateSidebar(data) {
+  // Stats
+  const liveNodes  = data.nodes.filter(n => !n.baseline);
+  const conflictE  = data.edges.filter(e => e.type === 'conflict');
+  document.getElementById('stat-actors').textContent  = data.nodes.length;
+  document.getElementById('stat-edges').textContent   = data.edges.length;
+  document.getElementById('stat-conflict').textContent = conflictE.length;
+  document.getElementById('stat-live').textContent    = liveNodes.length;
+  document.getElementById('stat-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // Region counts
+  const byRegion = {};
+  data.nodes.forEach(n => { byRegion[n.region] = (byRegion[n.region]||0)+1; });
+  Object.entries(byRegion).forEach(([r,c]) => {
+    const el = document.getElementById(`rc-${r}`);
+    if (el) el.textContent = c;
+  });
+  const rcAll = document.getElementById('rc-All');
+  if (rcAll) rcAll.textContent = data.nodes.length;
+
+  // Actor list — sorted by mention count desc
+  const sorted = [...data.nodes].sort((a,b) => b.count-a.count);
+  const list = document.getElementById('actor-list');
+  list.innerHTML = sorted.map(n => `
+    <div class="actor-item" onclick="openDrawer(${JSON.stringify(n).replace(/"/g,'&quot;')}, null)">
+      <div class="actor-item-left">
+        <div class="actor-pip" style="background:${REGION_COLOR[n.region]||'#6b7280'};"></div>
+        <span class="actor-name">${n.id}</span>
+      </div>
+      <span class="actor-badge">${n.count > 0 ? n.count : '—'}</span>
+    </div>
+  `).join('');
+}
+
+/* ── Actor drawer ──────────────────────────────────────────────────────── */
+function openDrawer(node, data) {
+  const graphData = data || _graphData;
+  document.getElementById('drawer-name').textContent = node.id;
+  document.getElementById('drawer-region').textContent = node.region;
+  document.getElementById('drawer-region').style.color = REGION_COLOR[node.region] || '#6b7280';
+  document.getElementById('drawer-loading').style.display  = 'block';
+  document.getElementById('drawer-content').style.display  = 'none';
+  document.getElementById('actor-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Connections from graph data
+  const conns = [];
+  if (graphData) {
+    graphData.edges.forEach(e => {
+      const s = typeof e.source==='object'?e.source.id:e.source;
+      const t = typeof e.target==='object'?e.target.id:e.target;
+      if (s===node.id) conns.push({actor:t, type:e.type, weight:e.weight});
+      if (t===node.id) conns.push({actor:s, type:e.type, weight:e.weight});
+    });
+    conns.sort((a,b)=>b.weight-a.weight);
+  }
+
+  // Fetch country data
+  fetch(`/api/country?name=${encodeURIComponent(node.id)}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      document.getElementById('drawer-loading').style.display = 'none';
+      document.getElementById('drawer-content').style.display = 'block';
+
+      // Stats
+      const statsEl = document.getElementById('drawer-stats');
+      if (d) {
+        statsEl.innerHTML = `
+          <div class="drawer-stat"><span class="drawer-stat-val">${d.count||0}</span><span class="drawer-stat-key">Articles</span></div>
+          <div class="drawer-stat"><span class="drawer-stat-val">${d.avg_severity||'—'}</span><span class="drawer-stat-key">Avg Severity</span></div>
+          <div class="drawer-stat"><span class="drawer-stat-val" style="font-size:13px;">${d.sentiment||'—'}</span><span class="drawer-stat-key">Sentiment</span></div>
+        `;
+      } else {
+        statsEl.innerHTML = `<div class="drawer-stat"><span class="drawer-stat-val">${node.count}</span><span class="drawer-stat-key">Mentions</span></div>`;
+      }
+
+      // Summary
+      document.getElementById('drawer-summary').textContent = d?.summary || 'No live intelligence available for this actor in the current feed window.';
+
+      // Connections
+      const cEl = document.getElementById('drawer-connections');
+      const TYPE_COLOR = {conflict:'#ef4444',diplomatic:'#3b82f6',economic:'#22c55e',alliance:'#14b8a6'};
+      cEl.innerHTML = conns.length
+        ? conns.slice(0,8).map(c => `
+            <div class="conn-row">
+              <div class="actor-pip" style="background:${REGION_COLOR[_graphData?.nodes.find(n=>n.id===c.actor)?.region]||'#6b7280'};width:6px;height:6px;border-radius:50%;flex-shrink:0;"></div>
+              <span class="conn-actor">${c.actor}</span>
+              <span class="conn-type" style="background:${TYPE_COLOR[c.type]||'#6b7280'}22;color:${TYPE_COLOR[c.type]||'#8b95a8'};">${c.type}</span>
+              <span style="font-family:var(--font-m);font-size:9px;color:var(--muted);">×${c.weight}</span>
+            </div>`).join('')
+        : '<span style="font-family:var(--font-m);font-size:10px;color:var(--muted);">No connections detected in current feed.</span>';
+
+      // Articles
+      const artEl = document.getElementById('drawer-articles');
+      const arts  = d?.articles || [];
+      artEl.innerHTML = arts.length
+        ? arts.slice(0,5).map(a => `
+            <div class="drawer-article">
+              <div class="drawer-article-title"><a href="${a.url}" target="_blank">${a.title}</a></div>
+              <div class="drawer-article-meta">${a.source || ''} · ${a.category || ''}</div>
+            </div>`).join('')
+        : '<span style="font-family:var(--font-m);font-size:10px;color:var(--muted);">No articles found in current feed window.</span>';
+    })
+    .catch(() => {
+      document.getElementById('drawer-loading').textContent = 'Failed to load intelligence data.';
+    });
+}
+
+function closeDrawer() {
+  document.getElementById('actor-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+/* ── Boot ──────────────────────────────────────────────────────────────── */
+async function boot() {
+  try {
+    const res = await fetch('/api/network');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    populateSidebar(data);
+    renderGraph(data);
+  } catch(e) {
+    console.error('Network page error:', e);
+    document.getElementById('graph-svg').insertAdjacentHTML('afterend',
+      '<p style="text-align:center;padding:60px;color:#4b5563;font-family:Space Mono,monospace;font-size:11px;">Failed to load network data. Is the server running?</p>');
+  }
+}
+
+boot();
+// Refresh every 5 minutes
+setInterval(boot, 5 * 60 * 1000);
+</script>
+</body>
+</html>

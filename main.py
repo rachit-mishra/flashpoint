@@ -144,13 +144,74 @@ def _edge_type(article: dict) -> str:
     return "diplomatic"
 
 
+# Known geopolitical relationships — always present regardless of article volume
+BASELINE_EDGES: list[tuple[str, str, str]] = [
+    # South Asia
+    ("India",        "Pakistan",      "conflict"),
+    ("India",        "China",         "conflict"),
+    ("India",        "USA",           "alliance"),
+    ("India",        "Russia",        "alliance"),
+    ("India",        "Bangladesh",    "diplomatic"),
+    ("India",        "Sri Lanka",     "alliance"),
+    ("India",        "Afghanistan",   "diplomatic"),
+    ("India",        "Myanmar",       "diplomatic"),
+    ("Pakistan",     "China",         "alliance"),
+    ("Pakistan",     "Afghanistan",   "conflict"),
+    ("Pakistan",     "USA",           "diplomatic"),
+    ("Pakistan",     "Saudi Arabia",  "alliance"),
+    # Middle East
+    ("Iran",         "Israel",        "conflict"),
+    ("Iran",         "USA",           "conflict"),
+    ("Iran",         "Saudi Arabia",  "conflict"),
+    ("Iran",         "Hezbollah",     "alliance"),
+    ("Iran",         "Hamas",         "alliance"),
+    ("Iran",         "Russia",        "alliance"),
+    ("Israel",       "USA",           "alliance"),
+    ("Israel",       "Hamas",         "conflict"),
+    ("Israel",       "Hezbollah",     "conflict"),
+    ("Saudi Arabia", "USA",           "alliance"),
+    ("Turkey",       "NATO",          "alliance"),
+    ("Turkey",       "Russia",        "diplomatic"),
+    # Europe
+    ("Russia",       "Ukraine",       "conflict"),
+    ("Russia",       "NATO",          "conflict"),
+    ("Russia",       "USA",           "conflict"),
+    ("Russia",       "China",         "alliance"),
+    ("Ukraine",      "USA",           "alliance"),
+    ("Ukraine",      "NATO",          "alliance"),
+    ("Ukraine",      "EU",            "alliance"),
+    ("NATO",         "EU",            "alliance"),
+    # Asia Pacific
+    ("China",        "USA",           "conflict"),
+    ("China",        "Japan",         "conflict"),
+    ("China",        "North Korea",   "alliance"),
+    ("Japan",        "USA",           "alliance"),
+    ("North Korea",  "USA",           "conflict"),
+    # Global
+    ("UN",           "Russia",        "diplomatic"),
+    ("UN",           "USA",           "diplomatic"),
+    ("UN",           "China",         "diplomatic"),
+]
+
+
 def compute_actor_network(articles: list[dict]) -> dict:
-    """Build actor co-occurrence network from articles."""
+    """Build actor co-occurrence network, seeded with known geopolitical relationships."""
     from collections import defaultdict
     node_counts:   dict[str, int]   = defaultdict(int)
     node_severity: dict[str, list]  = defaultdict(list)
     edge_raw:      dict[tuple, dict] = {}
 
+    # ── Seed baseline edges / nodes ──────────────────────────────────────────
+    for a1, a2, etype in BASELINE_EDGES:
+        for actor in (a1, a2):
+            if actor not in node_counts:
+                node_counts[actor]   = 0
+                node_severity[actor] = [1]
+        key = tuple(sorted([a1, a2]))
+        if key not in edge_raw:
+            edge_raw[key] = {"weight": 1, "types": {etype: 1}, "baseline": True}
+
+    # ── Layer live co-occurrence on top ──────────────────────────────────────
     for a in articles:
         if not _is_analyzed(a):
             continue
@@ -167,7 +228,7 @@ def compute_actor_network(articles: list[dict]) -> dict:
             for j in range(i + 1, len(actors)):
                 key = tuple(sorted([actors[i], actors[j]]))
                 if key not in edge_raw:
-                    edge_raw[key] = {"weight": 0, "types": {}}
+                    edge_raw[key] = {"weight": 0, "types": {}, "baseline": False}
                 edge_raw[key]["weight"] += 1
                 edge_raw[key]["types"][etype] = edge_raw[key]["types"].get(etype, 0) + 1
 
@@ -177,16 +238,18 @@ def compute_actor_network(articles: list[dict]) -> dict:
             "region":       ACTOR_REGIONS.get(actor, "Global"),
             "count":        count,
             "avg_severity": round(sum(node_severity[actor]) / len(node_severity[actor]), 2),
+            "baseline":     count == 0,   # True = no live articles, anchored by baseline only
         }
         for actor, count in node_counts.items()
     ]
 
     edges = [
         {
-            "source": k[0],
-            "target": k[1],
-            "weight": v["weight"],
-            "type":   max(v["types"], key=v["types"].get),
+            "source":   k[0],
+            "target":   k[1],
+            "weight":   v["weight"],
+            "type":     max(v["types"], key=v["types"].get),
+            "baseline": v.get("baseline", False),
         }
         for k, v in edge_raw.items()
         if k[0] in node_counts and k[1] in node_counts
@@ -1105,6 +1168,13 @@ async def serve_og_card(name: str = "FLASHPOINT", sev: int = 0, sent: str = "Neu
     from fastapi.responses import Response
     return Response(content=buf.getvalue(), media_type="image/png",
                     headers={"Cache-Control": "public, max-age=300"})
+
+
+@app.get("/network")
+async def serve_network():
+    """Serve the Actor Network page."""
+    with open(BASE_DIR / "network.html") as f:
+        return HTMLResponse(f.read())
 
 
 @app.get("/scenario")
