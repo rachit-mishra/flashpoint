@@ -8,22 +8,26 @@ import os
 
 import httpx
 
-SARVAM_KEY  = os.getenv("SARVAM_API_KEY", "")
 SARVAM_BASE = "https://api.sarvam.ai"
-_HEADERS    = {
-    "api-subscription-key": SARVAM_KEY,
-    "Content-Type": "application/json",
-}
+
+
+def _headers() -> dict:
+    """Read key at call time so Railway env vars are always picked up."""
+    return {
+        "api-subscription-key": os.getenv("SARVAM_API_KEY", ""),
+        "Content-Type": "application/json",
+    }
 
 
 def translate_to_hindi(text: str) -> str:
     """Translate English text to formal Hindi using Mayura v1."""
-    if not SARVAM_KEY or not text.strip():
+    key = os.getenv("SARVAM_API_KEY", "")
+    if not key or not text.strip():
         return text
     try:
         r = httpx.post(
             f"{SARVAM_BASE}/translate",
-            headers=_HEADERS,
+            headers=_headers(),
             json={
                 "input":                text[:3000],   # Mayura limit
                 "source_language_code": "en-IN",
@@ -45,12 +49,13 @@ def translate_to_hindi(text: str) -> str:
 
 def text_to_speech(text: str, lang: str = "hi-IN", speaker: str = "shubh") -> bytes:
     """Convert text to speech using Bulbul v3. Returns MP3 bytes."""
-    if not SARVAM_KEY or not text.strip():
+    key = os.getenv("SARVAM_API_KEY", "")
+    if not key or not text.strip():
         return b""
     try:
         r = httpx.post(
             f"{SARVAM_BASE}/text-to-speech",
-            headers=_HEADERS,
+            headers=_headers(),
             json={
                 "text":                text[:2500],   # Bulbul v3 limit
                 "target_language_code": lang,
