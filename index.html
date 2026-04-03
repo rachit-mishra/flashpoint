@@ -2735,7 +2735,7 @@ async function renderMap(pulseData) {
   if (!_indiaBoundary) {
     try {
       _indiaBoundary = await d3.json(
-        'https://cdn.jsdelivr.net/gh/geohacker/india@master/country/india.geojson'
+        'https://raw.githubusercontent.com/datameet/maps/master/Country/india-composite.geojson'
       );
     } catch(e) { console.warn('[Map] India boundary fetch failed', e); }
   }
