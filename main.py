@@ -1266,6 +1266,18 @@ async def get_network():
     return JSONResponse(compute_actor_network(combined))
 
 
+@app.get("/api/sarvam/status")
+async def sarvam_status():
+    """Debug: confirm SARVAM_API_KEY is present (never exposes the value)."""
+    import os as _os
+    key = _os.getenv("SARVAM_API_KEY", "")
+    return JSONResponse({
+        "key_present": bool(key),
+        "key_length":  len(key),
+        "key_prefix":  key[:4] + "…" if key else "",
+    })
+
+
 @app.get("/api/sarvam/hindi-brief")
 async def get_hindi_brief():
     """Translate the cached South Asia brief to Hindi using Sarvam Mayura."""

@@ -72,4 +72,8 @@ def text_to_speech(text: str, lang: str = "hi-IN", speaker: str = "shubh") -> by
         return base64.b64decode(r.json()["audios"][0])
     except Exception as exc:
         print(f"[Sarvam] TTS error: {exc}")
+        try:
+            print(f"[Sarvam] TTS response body: {r.text[:300]}")
+        except Exception:
+            pass
         return b""
