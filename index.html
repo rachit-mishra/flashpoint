@@ -2692,7 +2692,8 @@ const REGION_CENTERS = {
   'South Asia':  [ 78.9, 20.6],   // India centre
 };
 
-let _worldTopo = null; // topology cached after first fetch
+let _worldTopo    = null; // topology cached after first fetch
+let _indiaBoundary = null; // India official boundary (full J&K claimed territory)
 
 function _mapColor(score) {
   if (score > 85) return '#dc2626';
@@ -2720,7 +2721,7 @@ async function renderMap(pulseData) {
   if (!_worldTopo) {
     try {
       _worldTopo = await d3.json(
-        'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
+        'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json'
       );
     } catch (e) {
       console.error('[Map] Topology fetch failed', e);
@@ -2728,6 +2729,15 @@ async function renderMap(pulseData) {
       if (loadEl) loadEl.textContent = 'Map unavailable';
       return;
     }
+  }
+
+  // Fetch India official boundary (full J&K claimed territory) once
+  if (!_indiaBoundary) {
+    try {
+      _indiaBoundary = await d3.json(
+        'https://cdn.jsdelivr.net/gh/geohacker/india@master/country/india.geojson'
+      );
+    } catch(e) { console.warn('[Map] India boundary fetch failed', e); }
   }
 
   // Hide loading overlay
@@ -2814,6 +2824,19 @@ async function renderMap(pulseData) {
       if (tip) tip.classList.remove('visible');
       d3.select(this).style('filter', null);
     });
+
+  // India official boundary overlay — covers full claimed territory incl. J&K, Aksai Chin, Arunachal Pradesh
+  if (_indiaBoundary) {
+    const indiaColor = _mapColor(regionScore['South Asia'] ?? 0);
+    g.append('path')
+      .datum(_indiaBoundary)
+      .attr('d', pathGen)
+      .attr('fill', indiaColor)
+      .attr('stroke', '#060e1a')
+      .attr('stroke-width', 0.35)
+      .style('cursor', 'crosshair')
+      .style('pointer-events', 'none'); // let underlying country tooltips still fire
+  }
 
   // Country borders on top
   g.append('path').datum(borders)
