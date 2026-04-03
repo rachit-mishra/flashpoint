@@ -1500,8 +1500,34 @@
 
     <!-- SIGNAL BRIEF -->
     <div class="card brief-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;gap:8px;flex-wrap:wrap;">
         <div class="card-eyebrow">Signal Brief</div>
+
+        <!-- Sarvam controls — only visible in SA theatre mode -->
+        <div id="js-sarvam-controls" style="display:none;align-items:center;gap:6px;">
+          <!-- Language toggle -->
+          <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+            <button id="js-lang-en" onclick="switchBriefLang('en')"
+              style="padding:3px 10px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;
+                border:none;cursor:pointer;transition:all 0.15s;background:rgba(245,158,11,0.15);color:#f59e0b;">
+              EN
+            </button>
+            <button id="js-lang-hi" onclick="switchBriefLang('hi')"
+              style="padding:3px 10px;font-family:var(--font-m);font-size:9px;letter-spacing:0.08em;
+                border:none;cursor:pointer;transition:all 0.15s;background:transparent;color:var(--text-3);">
+              हिं
+            </button>
+          </div>
+          <!-- Voice button -->
+          <button id="js-voice-btn" onclick="playVoiceBrief()" title="Listen in Hindi"
+            style="display:flex;align-items:center;gap:5px;padding:3px 10px;
+              border:1px solid var(--border);border-radius:6px;background:transparent;
+              font-family:var(--font-m);font-size:9px;color:var(--text-3);
+              cursor:pointer;transition:all 0.15s;letter-spacing:0.06em;">
+            🔊 <span id="js-voice-label">LISTEN</span>
+          </button>
+        </div>
+
         <div id="js-brief-ts" style="font-family:var(--font-m);font-size:9px;
           color:var(--text-3);letter-spacing:0.08em;display:none;">
           Updated <span id="js-brief-age"></span>
@@ -1896,6 +1922,10 @@ let _lastBriefText = null;
 let _lastBriefTime = null;
 
 function renderBrief(brief) {
+  // Cache English brief for Sarvam voice/translation — only when it's a real English brief
+  if (brief && brief.length > 15 && !/[\u0900-\u097F]/.test(brief)) {
+    _englishBrief = brief;
+  }
   document.getElementById('js-b-skel').style.display = 'none';
   if (brief && brief.length > 15) {
     const el  = document.getElementById('js-brief');
@@ -3338,6 +3368,100 @@ function _fullRerender(data) {
   if (banner) banner.style.display = _theatreActive ? 'flex' : 'none';
 }
 
+/* ─── Sarvam — Hindi brief + voice readout ────────────────────────────── */
+let _briefLang    = 'en';   // 'en' | 'hi'
+let _hindiBrief   = '';     // cached Hindi translation
+let _englishBrief = '';     // current English brief
+let _audioCtx     = null;
+
+async function switchBriefLang(lang) {
+  _briefLang = lang;
+  // Update toggle button styles
+  const enBtn = document.getElementById('js-lang-en');
+  const hiBtn = document.getElementById('js-lang-hi');
+  if (enBtn) { enBtn.style.background = lang==='en' ? 'rgba(245,158,11,0.15)' : 'transparent'; enBtn.style.color = lang==='en' ? '#f59e0b' : 'var(--text-3)'; }
+  if (hiBtn) { hiBtn.style.background = lang==='hi' ? 'rgba(245,158,11,0.15)' : 'transparent'; hiBtn.style.color = lang==='hi' ? '#f59e0b' : 'var(--text-3)'; }
+
+  if (lang === 'hi') {
+    if (_hindiBrief) { renderBrief(_hindiBrief); return; }
+    // Fetch Hindi translation
+    const briefEl = document.getElementById('js-brief');
+    if (briefEl) briefEl.style.opacity = '0.4';
+    try {
+      const res = await fetch('/api/sarvam/hindi-brief');
+      const d   = await res.json();
+      if (d.hindi_brief) {
+        _hindiBrief = d.hindi_brief;
+        renderBrief(_hindiBrief);
+      }
+    } catch(e) { console.warn('Hindi brief error:', e); }
+    if (briefEl) briefEl.style.opacity = '1';
+  } else {
+    if (_englishBrief) renderBrief(_englishBrief);
+  }
+}
+
+async function playVoiceBrief() {
+  const lbl = document.getElementById('js-voice-label');
+  const btn = document.getElementById('js-voice-btn');
+  if (!lbl || !btn) return;
+
+  // Use whichever brief is currently showing
+  const textToSpeak = _briefLang === 'hi' && _hindiBrief ? _hindiBrief : _englishBrief;
+  if (!textToSpeak) return;
+
+  lbl.textContent = 'LOADING…';
+  btn.style.color = '#f59e0b';
+  btn.style.borderColor = 'rgba(245,158,11,0.4)';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/sarvam/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: textToSpeak, lang: 'hi-IN', speaker: 'shubh' }),
+    });
+    if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+    const { audio } = await res.json();
+
+    // Decode base64 → ArrayBuffer → play
+    const bytes  = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await _audioCtx.decodeAudioData(bytes.buffer);
+    const src     = _audioCtx.createBufferSource();
+    src.buffer    = decoded;
+    src.connect(_audioCtx.destination);
+    src.start(0);
+
+    lbl.textContent = '▶ PLAYING';
+    src.onended = () => { lbl.textContent = 'LISTEN'; btn.style.color = 'var(--text-3)'; btn.style.borderColor = 'var(--border)'; btn.disabled = false; };
+  } catch(e) {
+    console.warn('Voice brief error:', e);
+    lbl.textContent = 'LISTEN';
+    btn.style.color = 'var(--text-3)';
+    btn.style.borderColor = 'var(--border)';
+    btn.disabled = false;
+  }
+}
+
+function _updateSarvamControls() {
+  const ctrl = document.getElementById('js-sarvam-controls');
+  if (!ctrl) return;
+  ctrl.style.display = _theatreActive ? 'flex' : 'none';
+  if (!_theatreActive) {
+    // Reset to English when exiting theatre
+    _briefLang  = 'en';
+    _hindiBrief = '';
+    const enBtn = document.getElementById('js-lang-en');
+    const hiBtn = document.getElementById('js-lang-hi');
+    if (enBtn) { enBtn.style.background = 'rgba(245,158,11,0.15)'; enBtn.style.color = '#f59e0b'; }
+    if (hiBtn) { hiBtn.style.background = 'transparent'; hiBtn.style.color = 'var(--text-3)'; }
+  }
+}
+
+// Override renderBrief to cache the English version
+const _origRenderBrief = typeof renderBrief !== 'undefined' ? renderBrief : null;
+
 function toggleTheatre() {
   _theatreActive = !_theatreActive;
   localStorage.setItem('fp-theatre', _theatreActive ? 'south-asia' : '');
@@ -3347,6 +3471,8 @@ function toggleTheatre() {
   // Update tagline
   const tagline = document.querySelector('.logo-tagline');
   if (tagline) tagline.textContent = _theatreActive ? 'South Asia Theatre' : 'Global Intelligence Monitor';
+
+  _updateSarvamControls();
 
   if (_fullData) {
     _fullRerender(_fullData);
@@ -3368,6 +3494,7 @@ function toggleTheatre() {
     const banner = document.getElementById('js-theatre-banner');
     if (banner) banner.style.display = 'flex';
   }
+  _updateSarvamControls();
 })();
 
 // ── Theme toggle ───────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from analyzer import analyze_batch, generate_situation_report, generate_country_brief, stream_scenario
 from fetcher import get_all_news
+from sarvam import translate_to_hindi, text_to_speech
 
 load_dotenv()
 
@@ -1263,6 +1264,39 @@ async def get_network():
             seen.add(url)
             combined.append(a)
     return JSONResponse(compute_actor_network(combined))
+
+
+@app.get("/api/sarvam/hindi-brief")
+async def get_hindi_brief():
+    """Translate the cached South Asia brief to Hindi using Sarvam Mayura."""
+    data     = _cache.get("data", {})
+    sa_brief = data.get("sa_brief", "")
+    if not sa_brief:
+        return JSONResponse({"hindi_brief": "", "error": "No South Asia brief in cache yet."})
+    loop        = asyncio.get_event_loop()
+    hindi_brief = await loop.run_in_executor(None, translate_to_hindi, sa_brief)
+    return JSONResponse({"hindi_brief": hindi_brief, "source_brief": sa_brief})
+
+
+class TTSRequest(BaseModel):
+    text:    str
+    lang:    str = "hi-IN"
+    speaker: str = "shubh"
+
+
+@app.post("/api/sarvam/tts")
+async def get_tts(body: TTSRequest):
+    """Convert text to Hindi speech via Sarvam Bulbul v3. Returns base64 MP3."""
+    import base64 as _b64
+    if not body.text.strip():
+        raise HTTPException(400, "text is required")
+    loop        = asyncio.get_event_loop()
+    audio_bytes = await loop.run_in_executor(
+        None, text_to_speech, body.text, body.lang, body.speaker
+    )
+    if not audio_bytes:
+        raise HTTPException(500, "TTS generation failed — check SARVAM_API_KEY.")
+    return JSONResponse({"audio": _b64.b64encode(audio_bytes).decode()})
 
 
 @app.get("/api/history")
