@@ -1185,6 +1185,13 @@ async def serve_scenario():
         return HTMLResponse(f.read())
 
 
+@app.get("/receipts")
+async def serve_receipts():
+    """Serve the Sarkari Receipt accountability archive page."""
+    with open(BASE_DIR / "receipts.html") as f:
+        return HTMLResponse(f.read())
+
+
 @app.get("/api/scenario/stream")
 async def scenario_stream(actor: str, trigger: str):
     """SSE endpoint — streams scenario analysis for the given actor + trigger."""
