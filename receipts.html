@@ -196,6 +196,36 @@
     .btn-share { background: rgba(29,161,242,0.08); border: 1px solid rgba(29,161,242,0.3); color: #60b8f7; }
     .btn-share:hover { background: rgba(29,161,242,0.18); }
 
+    /* ── Source Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 1000; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      max-width: 520px; width: 100%; padding: 28px; position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px; background: none; border: none;
+      color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--white); }
+    .modal-tag { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.14em; color: var(--red); margin-bottom: 10px; }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; line-height: 1.3; }
+    .modal-section { margin-bottom: 14px; }
+    .modal-section-label { font-family: var(--font-m); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
+    .modal-section-body { font-size: 13px; color: var(--muted2); line-height: 1.65; }
+    .modal-source-name { font-family: var(--font-m); font-size: 11px; color: var(--white); margin-bottom: 8px; }
+    .modal-ext-link {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 16px;
+      font-family: var(--font-m); font-size: 11px; color: #60a5fa;
+      border: 1px solid rgba(96,165,250,0.3); border-radius: 6px; padding: 7px 14px;
+      transition: background 0.15s;
+    }
+    .modal-ext-link:hover { background: rgba(96,165,250,0.08); }
+
     /* Empty */
     .empty-state { grid-column: 1/-1; text-align: center; padding: 64px 24px; color: var(--muted); }
     .empty-state p { font-size: 14px; margin-top: 12px; }
@@ -205,6 +235,38 @@
     .footer-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     .footer-left { font-family: var(--font-m); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; line-height: 1.8; }
     .footer-right { font-family: var(--font-m); font-size: 10px; color: var(--muted); }
+
+    /* ── Comparison Panel ── */
+    .compare-panel {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; margin-bottom: 24px;
+    }
+    .compare-side { padding: 22px 26px; }
+    .compare-side.pre  { border-right: none; }
+    .compare-side.post { border-left: none; }
+    .compare-divider {
+      width: 1px; background: var(--border); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px; padding: 16px 0;
+      position: relative;
+    }
+    .compare-divider::after {
+      content: '2014'; font-family: var(--font-m); font-size: 9px; color: var(--muted);
+      letter-spacing: 0.1em; writing-mode: vertical-rl; transform: rotate(180deg);
+    }
+    .compare-era {
+      font-family: var(--font-m); font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase; margin-bottom: 16px; font-weight: 700;
+    }
+    .compare-era.pre  { color: var(--pre); }
+    .compare-era.post { color: var(--post); }
+    .compare-metric { margin-bottom: 14px; }
+    .compare-metric-label { font-family: var(--font-m); font-size: 9px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+    .compare-metric-val { font-family: var(--font-m); font-size: 20px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+    .compare-bar-wrap { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; margin-top: 4px; }
+    .compare-bar { height: 5px; border-radius: 3px; transition: width 0.6s ease; }
+    .compare-bar.pre  { background: var(--pre); }
+    .compare-bar.post { background: var(--post); }
 
     @media (max-width: 900px) {
       .header-nav { display: none; }
@@ -289,6 +351,7 @@
       <button class="cat-pill"        data-cat="financial"    onclick="setCat('financial')">Financial Crime</button>
       <button class="cat-pill"        data-cat="defence"      onclick="setCat('defence')">Defence</button>
       <button class="cat-pill"        data-cat="transparency" onclick="setCat('transparency')">Transparency</button>
+      <button class="cat-pill"        data-cat="terrorism"    onclick="setCat('terrorism')">Terror Attacks</button>
     </div>
     <select class="sort-select" onchange="setSort(this.value)">
       <option value="year_desc">Newest First</option>
@@ -297,6 +360,9 @@
       <option value="loss_asc">Lowest Loss</option>
     </select>
   </div>
+
+  <!-- ── PRE vs POST 2014 Comparison ── -->
+  <div class="compare-panel" id="compare-panel"></div>
 
   <div class="case-count" id="case-count"></div>
 
@@ -314,6 +380,28 @@
     </div>
   </footer>
 
+</div>
+
+<!-- ── Source Modal ── -->
+<div class="modal-overlay" id="src-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-tag">SOURCE DOCUMENTATION</div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-section">
+      <div class="modal-section-label">Primary Source</div>
+      <div class="modal-source-name" id="modal-source"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Key Finding</div>
+      <div class="modal-section-body" id="modal-finding"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">Current Status</div>
+      <div class="modal-section-body" id="modal-status"></div>
+    </div>
+    <a class="modal-ext-link" id="modal-link" href="#" target="_blank" rel="noopener">View Official Document ↗</a>
+  </div>
 </div>
 
 <script>
@@ -829,6 +917,426 @@ const CASES = [
     source_url: "https://main.sci.gov.in",
     tweet: "📋 PEGASUS SURVEILLANCE (2021)\n\nJournalists, opposition politicians, constitutional judges allegedly targeted by Israeli Pegasus spyware.\nMinistry: Home (Amit Shah)\nStatus: SC technical committee inconclusive (2022); govt neither confirmed nor denied\nSource: SC report; Amnesty/Pegasus Project\n\n#SarkariReceipt flashpoint.watch/receipts"
   },
+
+  // ════════════════════ MORE PRE-2014 FINANCIAL ════════════════════
+
+  {
+    id: "harshad-mehta",
+    name: "Harshad Mehta Securities Scam",
+    year: 1992,
+    era: "pre",
+    era_label: "INC GOVT",
+    era_class: "eb-inc",
+    ministry: "Finance / RBI / SEBI",
+    minister: "Manmohan Singh (Finance Min.)",
+    loss_crore: 4000,
+    loss_display: "₹4,000 Cr",
+    is_monetary: true,
+    loss_note: "Harshad Mehta exploited loopholes in the banking system to siphon ₹4,000 Cr from banks into the stock market, inflating BSE Sensex by 4x before the scam collapsed.",
+    status_label: "CONVICTED",
+    status_class: "s-convicted",
+    status_note: "Harshad Mehta convicted in 9 of 27 cases before dying in judicial custody (2001). Key convictions: cheating and forgery. Multiple bank officials also convicted. Keetan Parekh scandal followed similar playbook in 2001.",
+    category: "financial",
+    cat_label: "Financial Crime",
+    source: "Joint Parliamentary Committee Report on Securities Scam, 1993",
+    source_url: "https://www.sebi.gov.in",
+    tweet: "📋 HARSHAD MEHTA SCAM (1992)\n\n₹4,000 Cr siphoned from banks into stock market — BSE Sensex inflated 4x before collapse.\nMinistry: Finance (Manmohan Singh)\nStatus: Mehta convicted in 9 of 27 cases; died in custody 2001\nSource: JPC Report 1993\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "telgi-stamp",
+    name: "Telgi Fake Stamp Paper Scam",
+    year: 2003,
+    era: "pre",
+    era_label: "NDA-1 / STATE GOVTS",
+    era_class: "eb-upa1",
+    ministry: "State Govts (MH, KA, AP, others)",
+    minister: "Abdul Karim Telgi (Mastermind)",
+    loss_crore: 30000,
+    loss_display: "₹30,000 Cr",
+    is_monetary: true,
+    loss_note: "Abdul Karim Telgi ran a nationwide fake stamp paper racket spanning 12 states — forging government stamp papers worth an estimated ₹20,000–30,000 Cr. Police officials and politicians across party lines were implicated.",
+    status_label: "CONVICTED",
+    status_class: "s-convicted",
+    status_note: "Telgi convicted and sentenced to 30 years rigorous imprisonment (2006). Multiple police officers and officials convicted. Telgi died in judicial custody (2017). SIT found links to police-political nexus across states.",
+    category: "corruption",
+    cat_label: "Corruption",
+    source: "SIT Report; Karnataka / Maharashtra High Court orders",
+    source_url: "https://cbi.gov.in",
+    tweet: "📋 TELGI STAMP PAPER SCAM (2003)\n\n₹30,000 Cr fake stamp paper racket across 12 states. Police-political nexus exposed.\nKey: Abdul Karim Telgi\nStatus: CONVICTED — 30 years RI (2006); died in custody 2017\nSource: SIT report\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "ketan-parekh",
+    name: "Ketan Parekh Stock Scam",
+    year: 2001,
+    era: "pre",
+    era_label: "NDA-1 (Vajpayee)",
+    era_class: "eb-upa1",
+    ministry: "Finance / SEBI / RBI",
+    minister: "Yashwant Sinha (Finance Min.)",
+    loss_crore: 1250,
+    loss_display: "₹1,250 Cr",
+    is_monetary: true,
+    loss_note: "Ketan Parekh manipulated stock prices of 10 companies (K-10 stocks) by borrowing ₹1,250 Cr from cooperative banks — repeating the Harshad Mehta playbook. Massive retail investor losses when bubble burst.",
+    status_label: "CONVICTED",
+    status_class: "s-convicted",
+    status_note: "Parekh convicted by SEBI (debarred from markets until 2017, later extended to 2030). Criminal case convicted him of cheating. Madhavpura Mercantile Co-op Bank collapsed as a result.",
+    category: "financial",
+    cat_label: "Financial Crime",
+    source: "SEBI investigation report 2001; RBI report on cooperative banks",
+    source_url: "https://www.sebi.gov.in",
+    tweet: "📋 KETAN PAREKH STOCK SCAM (2001)\n\n₹1,250 Cr borrowed from banks to pump K-10 stocks — retail investors wiped out when bubble burst.\nMinistry: Finance (Yashwant Sinha, NDA)\nStatus: CONVICTED; debarred from markets until 2030\nSource: SEBI investigation 2001\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "karnataka-mining",
+    name: "Karnataka Illegal Mining Scam",
+    year: 2011,
+    era: "pre",
+    era_label: "BJP · KARNATAKA",
+    era_class: "eb-upa2",
+    ministry: "Karnataka State — Mining",
+    minister: "B.S. Yediyurappa (CM, BJP Karnataka)",
+    loss_crore: 16085,
+    loss_display: "₹16,085 Cr",
+    is_monetary: true,
+    loss_note: "Supreme Court-ordered Lokayukta report found illegal iron ore mining in Bellary and other districts caused ₹16,085 Cr loss. The Reddy brothers (BJP MPs) ran a mining empire with political protection.",
+    status_label: "CONVICTIONS + BANS",
+    status_class: "s-convicted",
+    status_note: "Yediyurappa resigned as CM (2011), arrested (2011), later acquitted. Janardhan Reddy (BJP MP) arrested 2011 by CBI, later released on bail. SC banned mining in Bellary. Multiple officials convicted.",
+    category: "resource",
+    cat_label: "Resource Scam",
+    source: "Karnataka Lokayukta Report 2011; SC orders (2011)",
+    source_url: "https://main.sci.gov.in",
+    tweet: "📋 KARNATAKA MINING SCAM (2011)\n\n₹16,085 Cr illegal iron ore mining — Reddy brothers (BJP MPs) ran a mining empire.\nCM: B.S. Yediyurappa (BJP Karnataka)\nStatus: Multiple convictions; SC banned mining in Bellary\nSource: Karnataka Lokayukta Report 2011\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "cash-for-votes",
+    name: "Cash-for-Votes Scandal",
+    year: 2008,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Parliament / PMO",
+    minister: "Manmohan Singh (PM)",
+    loss_crore: 0,
+    loss_display: "Democracy Subverted",
+    is_monetary: false,
+    loss_note: "During the UPA government's trust vote on the India-US nuclear deal (July 2008), BJP MPs produced wads of cash on the Parliament floor, alleging they were bribed to vote for UPA. Three MPs were suspended.",
+    status_label: "INCONCLUSIVE",
+    status_class: "s-sc",
+    status_note: "SC declined to examine it in detail. Investigations inconclusive — no conclusive finding of who paid the bribe. Trust vote passed 275–256. India-US nuclear deal went through.",
+    category: "corruption",
+    cat_label: "Corruption",
+    source: "Parliamentary records, July 22, 2008; SC proceedings",
+    source_url: "https://main.sci.gov.in",
+    tweet: "📋 CASH-FOR-VOTES (2008)\n\nBJP MPs displayed wads of cash in Parliament — alleged bribery during UPA's trust vote on India-US nuclear deal.\nPM: Manmohan Singh\nStatus: Investigations inconclusive; trust vote passed 275–256\nSource: Parliamentary records, July 2008\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "land-for-jobs",
+    name: "Land for Railway Jobs Scam",
+    year: 2006,
+    era: "pre",
+    era_label: "UPA-1 / UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Indian Railways",
+    minister: "Lalu Prasad Yadav (Railway Min.)",
+    loss_crore: 18,
+    loss_display: "₹18 Cr",
+    is_monetary: true,
+    loss_note: "Railway jobs were allegedly given in exchange for land deeds from applicants' families to entities linked to Lalu Prasad Yadav. Properties transferred to Rabri Devi and family members.",
+    status_label: "ED CHARGESHEET",
+    status_class: "s-ongoing",
+    status_note: "CBI filed charge-sheet against Lalu Prasad Yadav, Rabri Devi, and their daughters (2022–23). ED attached properties. Lalu already serving sentence in Fodder Scam. Trial ongoing.",
+    category: "corruption",
+    cat_label: "Corruption",
+    source: "CBI FIR 2022; ED charge-sheet 2023",
+    source_url: "https://cbi.gov.in",
+    tweet: "📋 LAND FOR RAILWAY JOBS (2006)\n\nRailway jobs allegedly exchanged for land deeds — transferred to Lalu family entities.\nMin: Lalu Prasad Yadav (Railways, UPA)\nStatus: CBI chargesheet filed (2022); ED case ongoing\nSource: CBI FIR 2022\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  // ════════════════════ PRE-2014 TERROR ATTACKS ════════════════════
+
+  {
+    id: "bombay-blasts-1993",
+    name: "1993 Bombay Serial Blasts",
+    year: 1993,
+    era: "pre",
+    era_label: "INC GOVT",
+    era_class: "eb-inc",
+    ministry: "Home Ministry",
+    minister: "S.B. Chavan (Home Min.)",
+    loss_crore: 0,
+    loss_display: "257 Killed",
+    is_monetary: false,
+    loss_note: "13 coordinated bomb blasts across Bombay on March 12, 1993. 257 killed, 713 injured. Orchestrated by Dawood Ibrahim from Pakistan with ISI support in retaliation for the Babri Masjid demolition.",
+    status_label: "PARTIAL CONVICTIONS",
+    status_class: "s-convicted",
+    status_note: "Yakub Memon executed (2015). Tiger Memon and Dawood Ibrahim remain at large in Pakistan. 100+ convicted by TADA court. Dawood Ibrahim still on India's most wanted list, believed to be in Karachi.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "TADA Court judgment 2006; NIA records",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 1993 BOMBAY BLASTS\n\n13 coordinated blasts. 257 killed, 713 injured. Dawood Ibrahim + ISI orchestrated.\nMinistry: Home (INC govt)\nStatus: Yakub Memon executed 2015; Dawood Ibrahim still at large in Pakistan\nSource: TADA Court judgment 2006\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "parliament-attack-2001",
+    name: "Parliament Attack",
+    year: 2001,
+    era: "pre",
+    era_label: "NDA-1 (Vajpayee)",
+    era_class: "eb-upa1",
+    ministry: "Home Ministry",
+    minister: "L.K. Advani (Home Min.)",
+    loss_crore: 0,
+    loss_display: "14 Killed",
+    is_monetary: false,
+    loss_note: "5 LeT/JeM terrorists attacked Parliament on December 13, 2001. 9 security personnel and 1 gardener killed. Terrorists neutralized. Nearly triggered a full-scale India-Pakistan war.",
+    status_label: "CONVICTED",
+    status_class: "s-convicted",
+    status_note: "Afzal Guru convicted of conspiracy by SC, executed on February 9, 2013 (UPA govt). Shaukat Hussain Guru convicted. India launched Operation Parakram mobilizing troops along the Pakistan border.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "SC judgment — State (NCT of Delhi) vs Navjot Sandhu, 2005",
+    source_url: "https://main.sci.gov.in",
+    tweet: "📋 PARLIAMENT ATTACK (2001)\n\n5 LeT/JeM terrorists stormed Parliament. 14 killed. Nearly triggered India-Pakistan war.\nMinistry: Home (L.K. Advani, NDA)\nAfzal Guru executed 2013 (under UPA)\nSource: SC judgment 2005\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "mumbai-train-2006",
+    name: "Mumbai 7/11 Train Bombings",
+    year: 2006,
+    era: "pre",
+    era_label: "UPA-1",
+    era_class: "eb-upa1",
+    ministry: "Home Ministry",
+    minister: "Shivraj Patil (Home Min.)",
+    loss_crore: 0,
+    loss_display: "209 Killed",
+    is_monetary: false,
+    loss_note: "7 coordinated bomb blasts in Mumbai suburban trains on July 11, 2006 within 11 minutes. 209 killed, 714 injured. Lashkar-e-Taiba and Students Islamic Movement of India (SIMI) linked.",
+    status_label: "12 CONVICTED",
+    status_class: "s-convicted",
+    status_note: "Maharashtra ATS arrested suspects. Sessions court convicted 12 and sentenced 5 to death (2015). Bombay HC confirmed 5 death sentences and 7 life sentences (2017). SC appeal pending.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "Maharashtra ATS charge-sheet; Sessions Court judgment 2015",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 MUMBAI 7/11 TRAIN BOMBINGS (2006)\n\n7 blasts in 11 minutes on Mumbai trains. 209 killed, 714 injured. LeT + SIMI linked.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: 12 convicted; 5 death sentences (HC 2017)\nSource: Maharashtra ATS / Sessions Court 2015\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "samjhauta-2007",
+    name: "Samjhauta Express Bombing",
+    year: 2007,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry / NIA",
+    minister: "Shivraj Patil (Home Min.)",
+    loss_crore: 0,
+    loss_display: "68 Killed",
+    is_monetary: false,
+    loss_note: "Two bomb blasts on the Samjhauta Express (Delhi–Lahore train) on February 18, 2007. 68 killed — mostly Pakistani nationals. IEDs placed in luggage compartments.",
+    status_label: "ALL ACQUITTED",
+    status_class: "s-acquitted",
+    status_note: "NIA charge-sheeted Swami Aseemanand and others. NIA special court acquitted all accused for lack of evidence (2019). No one has been convicted. The case remains officially unsolved.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "NIA charge-sheet; NIA Special Court judgment, March 2019",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 SAMJHAUTA EXPRESS BOMBING (2007)\n\n2 blasts on Delhi–Lahore train. 68 killed, mostly Pakistani nationals.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: NIA court acquitted all accused (2019) — case officially unsolved\nSource: NIA Special Court judgment 2019\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "jaipur-2008",
+    name: "Jaipur Serial Bombings",
+    year: 2008,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry",
+    minister: "Shivraj Patil (Home Min.)",
+    loss_crore: 0,
+    loss_display: "63 Killed",
+    is_monetary: false,
+    loss_note: "8 coordinated bomb blasts across Jaipur on May 13, 2008. 63 killed, 216 injured. Indian Mujahideen claimed responsibility. Blasts occurred at crowded markets near temples.",
+    status_label: "CONVICTIONS",
+    status_class: "s-convicted",
+    status_note: "Rajasthan police and NIA arrested multiple accused. Trial court convicted several IM operatives. Death sentences awarded to some convicts. Cases at various appellate stages.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "NIA investigation records; Rajasthan Sessions Court",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 JAIPUR BOMBINGS (2008)\n\n8 blasts across crowded markets. 63 killed, 216 injured. Indian Mujahideen.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: Multiple convictions; death sentences awarded\nSource: NIA investigation records\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "ahmedabad-2008",
+    name: "Ahmedabad Serial Bombings",
+    year: 2008,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry",
+    minister: "Shivraj Patil (Home Min.)",
+    loss_crore: 0,
+    loss_display: "56 Killed",
+    is_monetary: false,
+    loss_note: "21 bomb blasts across Ahmedabad on July 26, 2008 — one day after the Bangalore blasts. 56 killed, 200+ injured. Indian Mujahideen sent an email warning 5 minutes before the blasts.",
+    status_label: "38 DEATH SENTENCES",
+    status_class: "s-convicted",
+    status_note: "Gujarat sessions court convicted 49 accused (2022) — 38 sentenced to death, 11 to life imprisonment. Largest mass conviction in a terror case in Indian history at the time.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "Gujarat Sessions Court judgment, February 2022; NIA records",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 AHMEDABAD BOMBINGS (2008)\n\n21 blasts in one day. 56 killed, 200+ injured. Indian Mujahideen.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: 49 convicted — 38 death sentences (Gujarat Sessions Court, 2022)\nSource: Gujarat Sessions Court 2022\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "26-11",
+    name: "26/11 Mumbai Terror Attack",
+    year: 2008,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry",
+    minister: "Shivraj Patil (Home Min.) — resigned",
+    loss_crore: 0,
+    loss_display: "166 Killed",
+    is_monetary: false,
+    loss_note: "10 LeT terrorists from Pakistan launched coordinated attacks across Mumbai — Taj Hotel, Oberoi, CST, Nariman House — over 60 hours from November 26–29, 2008. 166 killed including 26 foreigners.",
+    status_label: "KASAB EXECUTED",
+    status_class: "s-convicted",
+    status_note: "Ajmal Kasab (sole captured terrorist) executed on November 21, 2012 (UPA govt). Home Minister Shivraj Patil resigned. Pakistan's complicity established — mastermind Hafiz Saeed and others still free in Pakistan.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "SC judgment in Kasab case (2012); Parliamentary inquiry",
+    source_url: "https://main.sci.gov.in",
+    tweet: "📋 26/11 MUMBAI ATTACK (2008)\n\n10 Pakistani LeT terrorists. 166 killed. 60-hour siege of Mumbai.\nMinistry: Home (Shivraj Patil — resigned)\nStatus: Kasab executed 2012; masterminds Hafiz Saeed still free in Pakistan\nSource: SC judgment 2012\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "mumbai-blasts-2011",
+    name: "Mumbai Triple Blasts",
+    year: 2011,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry",
+    minister: "P. Chidambaram (Home Min.)",
+    loss_crore: 0,
+    loss_display: "27 Killed",
+    is_monetary: false,
+    loss_note: "Three coordinated blasts at Zaveri Bazar, Opera House, and Dadar on July 13, 2011. 27 killed, 130 injured. Indian Mujahideen claimed responsibility just two years after 26/11.",
+    status_label: "CONVICTIONS",
+    status_class: "s-convicted",
+    status_note: "NIA arrested multiple IM operatives. Yasin Bhatkal (IM co-founder) arrested 2013, convicted. Multiple others sentenced. Attack occurred despite heightened security post-26/11.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "NIA charge-sheet; NIA court convictions",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 MUMBAI TRIPLE BLASTS (2011)\n\n3 coordinated blasts. 27 killed, 130 injured. Indian Mujahideen.\nMinistry: Home (P. Chidambaram, UPA)\nStatus: Yasin Bhatkal and others convicted\nSource: NIA records\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "hyderabad-2013",
+    name: "Hyderabad Dilsukhnagar Bombings",
+    year: 2013,
+    era: "pre",
+    era_label: "UPA-2",
+    era_class: "eb-upa2",
+    ministry: "Home Ministry",
+    minister: "Sushilkumar Shinde (Home Min.)",
+    loss_crore: 0,
+    loss_display: "17 Killed",
+    is_monetary: false,
+    loss_note: "Two bomb blasts at Dilsukhnagar bus stop, Hyderabad on February 21, 2013. 17 killed, 119 injured. Indian Mujahideen linked. One of the last major IM attacks before the group was dismantled.",
+    status_label: "CONVICTIONS",
+    status_class: "s-convicted",
+    status_note: "Yasin Bhatkal (IM co-founder) and Asadullah Akhtar convicted by NIA court (2016) and sentenced to death. Multiple others convicted with life sentences.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "NIA Special Court judgment, 2016",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 HYDERABAD BOMBINGS (2013)\n\n2 blasts at Dilsukhnagar. 17 killed, 119 injured. Indian Mujahideen.\nMinistry: Home (Shinde, UPA)\nStatus: Yasin Bhatkal sentenced to death (NIA court 2016)\nSource: NIA Special Court judgment 2016\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  // ════════════════════ POST-2014 TERROR ATTACKS ════════════════════
+
+  {
+    id: "pathankot-2016",
+    name: "Pathankot Airbase Attack",
+    year: 2016,
+    era: "post",
+    era_label: "NDA-1",
+    era_class: "eb-nda1",
+    ministry: "Home / Defence",
+    minister: "Rajnath Singh (Home) · Manohar Parrikar (Defence)",
+    loss_crore: 0,
+    loss_display: "7 Killed",
+    is_monetary: false,
+    loss_note: "JeM terrorists attacked the Pathankot Air Force Station on January 2, 2016. 7 Indian security personnel killed. Attack came weeks after PM Modi's surprise visit to Pakistan's Nawaz Sharif.",
+    status_label: "SUSPECTS IDENTIFIED",
+    status_class: "s-ongoing",
+    status_note: "NIA investigation identified JeM operatives. Pakistan briefly investigated but took no action. Masood Azhar (JeM chief) still based in Pakistan. NIA case ongoing.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "NIA investigation records; Ministry of Defence statement",
+    source_url: "https://nia.gov.in",
+    tweet: "📋 PATHANKOT ATTACK (2016)\n\nJeM terrorists attacked Pathankot Air Force base. 7 security personnel killed.\nMinistry: Home/Defence (NDA govt)\nStatus: JeM operatives identified; Masood Azhar still in Pakistan\nSource: NIA records\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "uri-2016",
+    name: "Uri Army Camp Attack",
+    year: 2016,
+    era: "post",
+    era_label: "NDA-1",
+    era_class: "eb-nda1",
+    ministry: "Defence Ministry",
+    minister: "Manohar Parrikar (Defence Min.)",
+    loss_crore: 0,
+    loss_display: "19 Soldiers Killed",
+    is_monetary: false,
+    loss_note: "JeM terrorists attacked the Indian Army's 12 Infantry Brigade HQ in Uri, J&K on September 18, 2016. 19 soldiers killed — deadliest attack on Indian Army in two decades. India responded with cross-LoC surgical strikes.",
+    status_label: "SURGICAL STRIKES",
+    status_class: "s-ongoing",
+    status_note: "India launched surgical strikes across LoC on September 29, 2016 — first public acknowledgement of such an operation. Pakistan denied. JeM masterminds remain in Pakistan.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "MoD press release; DGMO statement Sep 29, 2016",
+    source_url: "https://pib.gov.in",
+    tweet: "📋 URI ATTACK (2016)\n\nJeM attacked Indian Army brigade HQ. 19 soldiers killed — deadliest in 2 decades.\nMinistry: Defence (Parrikar, NDA)\nIndia launched surgical strikes across LoC (Sep 29, 2016)\nSource: MoD / DGMO statement\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
+
+  {
+    id: "pulwama-2019",
+    name: "Pulwama CRPF Convoy Attack",
+    year: 2019,
+    era: "post",
+    era_label: "NDA-2",
+    era_class: "eb-nda2",
+    ministry: "Home / Defence",
+    minister: "Amit Shah (Home) · Nirmala Sitharaman (Defence)",
+    loss_crore: 0,
+    loss_display: "40 CRPF Killed",
+    is_monetary: false,
+    loss_note: "JeM suicide bomber Adil Ahmad Dar rammed an explosive-laden vehicle into a CRPF convoy in Pulwama on February 14, 2019. 40 CRPF personnel killed — deadliest terror attack in J&K in decades.",
+    status_label: "BALAKOT AIRSTRIKES",
+    status_class: "s-ongoing",
+    status_note: "India launched Balakot airstrikes on Feb 26, 2019, targeting JeM camp in Pakistan's Khyber Pakhtunkhwa. IAF Wing Cdr Abhinandan shot down, returned after international pressure. Masterminds still in Pakistan.",
+    category: "terrorism",
+    cat_label: "Terror Attack",
+    source: "MoD / MHA statements; IAF Balakot press briefing Feb 2019",
+    source_url: "https://pib.gov.in",
+    tweet: "📋 PULWAMA ATTACK (2019)\n\nJeM suicide bombing on CRPF convoy. 40 CRPF personnel killed.\nMinistry: Home/Defence (NDA govt)\nIndia launched Balakot airstrikes (Feb 26, 2019)\nSource: MoD/MHA statements\n\n#SarkariReceipt flashpoint.watch/receipts"
+  },
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -864,6 +1372,23 @@ function shareOnX(tweet) {
   window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(tweet), '_blank');
 }
 
+function openModal(id) {
+  const c = CASES.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('modal-title').textContent   = c.name;
+  document.getElementById('modal-source').textContent  = c.source;
+  document.getElementById('modal-finding').textContent = c.loss_note;
+  document.getElementById('modal-status').textContent  = c.status_note;
+  document.getElementById('modal-link').href           = c.source_url;
+  document.getElementById('src-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('src-modal') || e.currentTarget.classList.contains('modal-close')) {
+    document.getElementById('src-modal').classList.remove('open');
+  }
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
   let cases = CASES.filter(c =>
@@ -880,16 +1405,63 @@ function render() {
   });
 
   // Stats
-  const preCases  = CASES.filter(c => c.era === 'pre');
-  const postCases = CASES.filter(c => c.era === 'post');
-  const totalLoss = CASES.filter(c => c.is_monetary).reduce((s, c) => s + c.loss_crore, 0);
-  const lakh = totalLoss / 100000;
+  const preCases    = CASES.filter(c => c.era === 'pre');
+  const postCases   = CASES.filter(c => c.era === 'post');
+  const totalLoss   = CASES.filter(c => c.is_monetary).reduce((s, c) => s + c.loss_crore, 0);
+  const lakh        = totalLoss / 100000;
   document.getElementById('stat-total').textContent = `₹${lakh.toFixed(1)}L+ Cr`;
   document.getElementById('stat-cases').textContent = CASES.length;
   document.getElementById('stat-pre').textContent   = preCases.length;
   document.getElementById('stat-post').textContent  = postCases.length;
   document.getElementById('case-count').innerHTML   =
     `<span>${cases.length}</span> case${cases.length !== 1 ? 's' : ''} matching current filters`;
+
+  // Comparison panel
+  const preFinancial  = preCases.filter(c => c.category !== 'terrorism');
+  const postFinancial = postCases.filter(c => c.category !== 'terrorism');
+  const preTerror     = preCases.filter(c => c.category === 'terrorism');
+  const postTerror    = postCases.filter(c => c.category === 'terrorism');
+  const preKilled     = preTerror.reduce((s,c) => s + (parseInt(c.loss_display)||0), 0);
+  const postKilled    = postTerror.reduce((s,c) => s + (parseInt(c.loss_display)||0), 0);
+  const preLoss       = preFinancial.filter(c=>c.is_monetary).reduce((s,c)=>s+c.loss_crore,0);
+  const postLoss      = postFinancial.filter(c=>c.is_monetary).reduce((s,c)=>s+c.loss_crore,0);
+  const maxLoss       = Math.max(preLoss, postLoss);
+  const maxKilled     = Math.max(preKilled, postKilled);
+
+  function fmtL(c){ return c>=100000?`₹${(c/100000).toFixed(1)}L Cr`:`₹${c.toLocaleString('en-IN')} Cr`; }
+
+  document.getElementById('compare-panel').innerHTML = `
+    <div class="compare-side pre">
+      <div class="compare-era pre">BEFORE 2014 · UPA ERA</div>
+      <div class="compare-metric">
+        <div class="compare-metric-label">Financial Scams</div>
+        <div class="compare-metric-val">${preFinancial.length} cases</div>
+        <div class="compare-metric-val" style="font-size:14px;color:var(--pre)">${fmtL(preLoss)}</div>
+        <div class="compare-bar-wrap"><div class="compare-bar pre" style="width:${maxLoss?Math.round(preLoss/maxLoss*100):0}%"></div></div>
+      </div>
+      <div class="compare-metric">
+        <div class="compare-metric-label">Major Terror Attacks</div>
+        <div class="compare-metric-val">${preTerror.length} attacks</div>
+        <div class="compare-metric-val" style="font-size:14px;color:var(--pre)">${preKilled} killed</div>
+        <div class="compare-bar-wrap"><div class="compare-bar pre" style="width:${maxKilled?Math.round(preKilled/maxKilled*100):0}%"></div></div>
+      </div>
+    </div>
+    <div class="compare-divider"></div>
+    <div class="compare-side post">
+      <div class="compare-era post">AFTER 2014 · NDA ERA</div>
+      <div class="compare-metric">
+        <div class="compare-metric-label">Financial Scams</div>
+        <div class="compare-metric-val">${postFinancial.length} cases</div>
+        <div class="compare-metric-val" style="font-size:14px;color:var(--post)">${fmtL(postLoss)}</div>
+        <div class="compare-bar-wrap"><div class="compare-bar post" style="width:${maxLoss?Math.round(postLoss/maxLoss*100):0}%"></div></div>
+      </div>
+      <div class="compare-metric">
+        <div class="compare-metric-label">Major Terror Attacks</div>
+        <div class="compare-metric-val">${postTerror.length} attacks</div>
+        <div class="compare-metric-val" style="font-size:14px;color:var(--post)">${postKilled} killed</div>
+        <div class="compare-bar-wrap"><div class="compare-bar post" style="width:${maxKilled?Math.round(postKilled/maxKilled*100):0}%"></div></div>
+      </div>
+    </div>`;
 
   const grid = document.getElementById('cards-grid');
   if (!cases.length) {
@@ -921,7 +1493,7 @@ function render() {
     <span class="status-badge ${c.status_class}">${c.status_label}</span>
     <span class="cat-tag">${c.cat_label}</span>
     <div class="card-actions">
-      <a href="${c.source_url}" target="_blank" rel="noopener" class="btn-src">Source ↗</a>
+      <button class="btn-src" onclick="openModal('${c.id}')">Source ↗</button>
       <button class="btn-share" onclick='shareOnX(${JSON.stringify(c.tweet)})'>𝕏 Share</button>
     </div>
   </div>
