@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from analyzer import analyze_batch, generate_situation_report, generate_country_brief, stream_scenario
 from fetcher import get_all_news
 from sarvam import translate_to_hindi, text_to_speech
+from receipts_data import RECEIPTS_SEED
 
 load_dotenv()
 
@@ -965,6 +966,11 @@ async def _background_refresh():
                 )
             except Exception as exc:
                 print(f"[Flashpoint] Refresh error: {exc}")
+        # Scan news for new receipts cases after each data refresh
+        try:
+            await _scan_for_new_receipts()
+        except Exception as exc:
+            print(f"[Receipts] Scan error in loop: {exc}")
         await asyncio.sleep(CACHE_TTL_SECONDS)
 
 
@@ -1004,6 +1010,164 @@ async def startup_event():
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────────
+
+# ── Sarkari Receipt — DB + scan ────────────────────────────────────────────────
+
+_RECEIPTS_FIELDS = [
+    "id","name","year","era","era_label","era_class","ministry","minister",
+    "loss_crore","loss_display","is_monetary","loss_note","status_label",
+    "status_class","status_note","category","cat_label","source","source_url","tweet",
+]
+_receipts_cache: dict = {}
+_receipts_cache_ts: float = 0.0
+RECEIPTS_CACHE_TTL = 3600  # 1 hour
+
+
+def _init_receipts_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS receipts_cases (
+                id TEXT PRIMARY KEY,
+                name TEXT, year INTEGER, era TEXT, era_label TEXT, era_class TEXT,
+                ministry TEXT, minister TEXT, loss_crore REAL DEFAULT 0,
+                loss_display TEXT, is_monetary INTEGER DEFAULT 1, loss_note TEXT,
+                status_label TEXT, status_class TEXT, status_note TEXT,
+                category TEXT, cat_label TEXT, source TEXT, source_url TEXT,
+                tweet TEXT, is_auto_detected INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+
+
+def _seed_receipts():
+    with sqlite3.connect(DB_PATH) as conn:
+        existing = {r[0] for r in conn.execute("SELECT id FROM receipts_cases")}
+        for c in RECEIPTS_SEED:
+            if c["id"] not in existing:
+                conn.execute(
+                    f"INSERT INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}) VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))})",
+                    [int(c[f]) if f == "is_monetary" else c.get(f) for f in _RECEIPTS_FIELDS]
+                )
+        conn.commit()
+
+
+def _load_receipts_from_db() -> list[dict]:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT *,is_auto_detected FROM receipts_cases ORDER BY year ASC"
+        ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["is_monetary"] = bool(d.get("is_monetary", 1))
+        d["is_auto_detected"] = bool(d.get("is_auto_detected", 0))
+        result.append(d)
+    return result
+
+
+async def _scan_for_new_receipts():
+    """Use Claude Haiku to scan cached news for new Indian scam/terror events."""
+    import anthropic as _ant
+    import json as _json
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return
+    data = _cache.get("data", {})
+    articles = data.get("articles", [])
+    if not articles:
+        return
+
+    with sqlite3.connect(DB_PATH) as conn:
+        existing_names = [r[0] for r in conn.execute("SELECT name FROM receipts_cases")]
+
+    recent = [a for a in articles if a.get("title")][:60]
+    if not recent:
+        return
+
+    articles_text = "\n\n".join(
+        f"Title: {a.get('title','')}\nSummary: {a.get('insight','')}\nSource: {a.get('source','')}"
+        for a in recent
+    )
+    existing_str = "; ".join(existing_names[:30])
+
+    prompt = f"""You scan Indian news to find significant NEW accountability events for a public database.
+
+Existing cases (do NOT duplicate): {existing_str}
+
+News articles:
+{articles_text}
+
+Find any NEW events that are:
+1. Indian corruption, financial fraud, resource misuse, defence irregularity, transparency failure, OR terror attack
+2. Not already in the existing list
+3. Significant: financial loss > ₹500 Cr, OR terror casualties > 3
+4. Recent (reported in these articles)
+
+Return a JSON array of new cases. Each object must have ALL these fields:
+id, name, year, era (pre/post based on whether before or after 2014), era_label, era_class (eb-nda1/eb-nda2/eb-upa1/eb-upa2/eb-inc),
+ministry, minister, loss_crore (number, 0 if non-monetary), loss_display, is_monetary (true/false),
+loss_note (2-3 sentence factual description), status_label, status_class (s-ongoing/s-convicted/s-pending/s-acquitted/s-sc),
+status_note, category (corruption/financial/resource/defence/transparency/terrorism), cat_label,
+source, source_url, tweet (pre-formatted tweet with #SarkariReceipt flashpoint.watch/receipts)
+
+Return [] if nothing new found. Return ONLY valid JSON array, no markdown."""
+
+    try:
+        client = _ant.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = resp.content[0].text.strip()
+        m = re.search(r"\[.*\]", raw, re.DOTALL)
+        if not m:
+            return
+        new_cases = _json.loads(m.group())
+        if not new_cases:
+            return
+
+        with sqlite3.connect(DB_PATH) as conn:
+            existing_ids = {r[0] for r in conn.execute("SELECT id FROM receipts_cases")}
+            inserted = 0
+            for c in new_cases:
+                if not c.get("id") or c["id"] in existing_ids:
+                    continue
+                vals = [int(c[f]) if f == "is_monetary" else c.get(f, "") for f in _RECEIPTS_FIELDS]
+                conn.execute(
+                    f"INSERT OR IGNORE INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}, is_auto_detected) "
+                    f"VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))}, 1)",
+                    vals
+                )
+                inserted += 1
+            conn.commit()
+        if inserted:
+            _receipts_cache.clear()
+            print(f"[Receipts] Auto-detected {inserted} new case(s) from news scan")
+    except Exception as e:
+        print(f"[Receipts] Scan error: {e}")
+
+
+# initialise on startup
+_init_receipts_db()
+_seed_receipts()
+
+
+@app.get("/api/receipts/cases")
+async def get_receipts_cases():
+    global _receipts_cache, _receipts_cache_ts
+    import time as _time
+    now = _time.time()
+    if _receipts_cache and (now - _receipts_cache_ts) < RECEIPTS_CACHE_TTL:
+        return JSONResponse(_receipts_cache)
+    cases = _load_receipts_from_db()
+    _receipts_cache = {"cases": cases, "total": len(cases),
+                       "auto_detected": sum(1 for c in cases if c.get("is_auto_detected"))}
+    _receipts_cache_ts = now
+    return JSONResponse(_receipts_cache)
+
 
 @app.get("/bimi-logo.svg")
 async def serve_bimi_logo():

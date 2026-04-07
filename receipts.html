@@ -196,6 +196,20 @@
     .btn-share { background: rgba(29,161,242,0.08); border: 1px solid rgba(29,161,242,0.3); color: #60b8f7; }
     .btn-share:hover { background: rgba(29,161,242,0.18); }
 
+    /* ── Radar Chart ── */
+    .radar-wrap {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; margin-bottom: 28px;
+    }
+    .radar-header {
+      padding: 18px 24px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    }
+    .radar-title { font-family: var(--font-m); font-size: 11px; letter-spacing: 0.14em; color: var(--red); }
+    .radar-sub { font-family: var(--font-m); font-size: 10px; color: var(--muted); }
+    .radar-body { padding: 24px; display: flex; justify-content: center; }
+    .radar-body canvas { max-width: 480px; width: 100%; }
+
     /* ── Source Modal ── */
     .modal-overlay {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -364,7 +378,23 @@
   <!-- ── PRE vs POST 2014 Comparison ── -->
   <div class="compare-panel" id="compare-panel"></div>
 
-  <div class="case-count" id="case-count"></div>
+  <!-- ── Radar Chart ── -->
+  <div class="radar-wrap" id="radar-wrap" style="display:none">
+    <div class="radar-header">
+      <div class="radar-title">ERA COMPARISON — ACCOUNTABILITY INDEX</div>
+      <div class="radar-sub">UPA era vs NDA era across six accountability dimensions</div>
+    </div>
+    <div class="radar-body"><canvas id="radar-canvas" height="320"></canvas></div>
+  </div>
+
+  <!-- count + AI badge row -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <div class="case-count" id="case-count" style="margin-bottom:0"></div>
+    <span id="auto-badge" style="display:none;font-family:var(--font-m);font-size:9px;
+      letter-spacing:0.1em;padding:3px 9px;border-radius:999px;
+      background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.3);">
+      AI-DETECTED</span>
+  </div>
 
   <!-- ── Cards ── -->
   <div class="cards-grid" id="cards-grid"></div>
@@ -404,940 +434,33 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ── Dataset ───────────────────────────────────────────────────────────────────
-const CASES = [
+// ── Dataset — loaded from API ─────────────────────────────────────────────────
+let CASES = [];
+let _radarChart = null;
 
-  // ════════════════════ PRE-2014 ════════════════════
+async function loadCases() {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+    <p style="font-size:22px;margin-bottom:10px">⏳</p>
+    <p>Loading cases from database…</p></div>`;
+  try {
+    const res  = await fetch('/api/receipts/cases');
+    const data = await res.json();
+    CASES = data.cases || [];
+    const autoCount = data.auto_detected || 0;
+    if (autoCount > 0) {
+      document.getElementById('auto-badge').textContent = `+${autoCount} AI-detected`;
+      document.getElementById('auto-badge').style.display = 'inline-flex';
+    }
+    render();
+    renderRadar();
+  } catch(e) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Failed to load cases. Please refresh.</p></div>`;
+  }
+}
 
-  {
-    id: "bofors",
-    name: "Bofors Scandal",
-    year: 1987,
-    era: "pre",
-    era_label: "INC GOVT",
-    era_class: "eb-inc",
-    ministry: "Defence Ministry",
-    minister: "Rajiv Gandhi (PM)",
-    loss_crore: 64,
-    loss_display: "₹64 Cr",
-    is_monetary: true,
-    loss_note: "Alleged kickbacks of ₹64 Cr on a ₹1,437 Cr Bofors howitzer deal. Swedish Radio investigation (1987) first revealed payments to middlemen.",
-    status_label: "ALL DISCHARGED",
-    status_class: "s-acquitted",
-    status_note: "Delhi HC quashed all charges in 2005 citing insufficient evidence. No convictions. CBI closed the investigation. Remains India's longest-running political controversy.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "Joint Parliamentary Committee Report, 1988",
-    source_url: "https://www.thehindu.com/news/national/bofors-case-timeline/article5094397.ece",
-    tweet: "📋 BOFORS SCANDAL (1987)\n\nAlleged kickbacks of ₹64 Cr on India's ₹1,437 Cr howitzer deal.\nMinistry: Defence | PM Rajiv Gandhi era\nStatus: Delhi HC discharged all accused (2005); no convictions\nSource: JPC Report 1988\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "fodder",
-    name: "Bihar Fodder Scam",
-    year: 1996,
-    era: "pre",
-    era_label: "RJD · BIHAR",
-    era_class: "eb-rjd",
-    ministry: "Animal Husbandry, Bihar",
-    minister: "Lalu Prasad Yadav (CM Bihar)",
-    loss_crore: 950,
-    loss_display: "₹950 Cr",
-    is_monetary: true,
-    loss_note: "Fraudulent withdrawal of ₹950 Cr from Bihar state treasury under the guise of animal fodder procurement over several years.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Lalu Prasad Yadav convicted in multiple cases (2013, 2017, 2022). Sentenced to 3.5–5 years in various judgments. Served imprisonment. Appeal pending in SC.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "CBI investigation; Jharkhand HC/SC orders",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 BIHAR FODDER SCAM (1996)\n\n₹950 Cr fraudulently withdrawn from Bihar treasury under fake animal fodder procurement.\nCM: Lalu Prasad Yadav (RJD)\nStatus: CONVICTED — multiple sentences across cases (2013, 2017, 2022)\nSource: CBI\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "2g",
-    name: "2G Spectrum Scam",
-    year: 2008,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Ministry of Telecom",
-    minister: "A. Raja (DMK)",
-    loss_crore: 176000,
-    loss_display: "₹1.76L Cr",
-    is_monetary: true,
-    loss_note: "CAG Report No. 19 of 2010–11 estimated a presumptive loss of ₹1,76,645 Cr from below-market spectrum allocation without competitive bidding.",
-    status_label: "ACQUITTED",
-    status_class: "s-acquitted",
-    status_note: "Special Court acquitted all accused in Dec 2017. Delhi HC upheld acquittal in 2018. CBI and ED filed appeal in the Supreme Court — still pending. CAG loss figure was a presumptive estimate.",
-    category: "resource",
-    cat_label: "Resource Scam",
-    source: "CAG Report No. 19 of 2010–11",
-    source_url: "https://cag.gov.in/en/audit-report/details/36559",
-    tweet: "📋 2G SPECTRUM SCAM (2008)\n\nCAG estimated presumptive loss: ₹1,76,645 Cr — spectrum allocated below market without bidding.\nMinister: A. Raja (Telecom, DMK)\nStatus: Special Court acquitted all (2017); CBI/ED appeal pending in SC\nSource: CAG Report No. 19 of 2010–11\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "satyam",
-    name: "Satyam Computer Fraud",
-    year: 2009,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Corporate Affairs / SEBI",
-    minister: "Ramalinga Raju (Satyam CMD)",
-    loss_crore: 7800,
-    loss_display: "₹7,800 Cr",
-    is_monetary: true,
-    loss_note: "Raju admitted fabricating ₹7,136 Cr in cash balances and inflating revenues over years. India's largest accounting fraud at the time; compared to Enron globally.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Ramalinga Raju convicted by CBI court (2015) — 7 years rigorous imprisonment. Telangana HC later suspended sentence pending appeal. Corporate governance overhaul followed.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "Raju's confession letter (Jan 2009); CBI/SEBI investigation",
-    source_url: "https://www.sebi.gov.in",
-    tweet: "📋 SATYAM FRAUD (2009)\n\nIndia's largest accounting fraud — ₹7,800 Cr in fabricated cash & inflated revenues.\nKey: Ramalinga Raju (Satyam CMD)\nStatus: CONVICTED — 7 years RI (CBI court, 2015)\nSource: CBI / SEBI investigation\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "cwg",
-    name: "Commonwealth Games Scam",
-    year: 2010,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Sports / Urban Development",
-    minister: "Suresh Kalmadi (IOA) · M.S. Gill (Sports Min.)",
-    loss_crore: 70000,
-    loss_display: "₹70,000 Cr",
-    is_monetary: true,
-    loss_note: "CAG flagged massive cost overruns, inflated tenders and procurement irregularities across Delhi 2010 Games infrastructure and operations.",
-    status_label: "CASES ONGOING",
-    status_class: "s-pending",
-    status_note: "Kalmadi arrested (2011), released on bail; later re-elected Congress MP. Multiple CBI charge-sheets filed. Cases in trial courts for over a decade with no final judgment.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "CAG Performance Audit Report on CWG 2011",
-    source_url: "https://cag.gov.in",
-    tweet: "📋 CWG SCAM (2010)\n\nCAG flagged ₹70,000 Cr in overruns and irregular tenders for Delhi 2010 Commonwealth Games.\nKey: Suresh Kalmadi (IOA), M.S. Gill (Sports Minister)\nStatus: Cases ongoing in trial courts since 2011\nSource: CAG Report 2011\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "adarsh",
-    name: "Adarsh Housing Society Scam",
-    year: 2010,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Maharashtra State / Defence",
-    minister: "Ashok Chavan (Maharashtra CM)",
-    loss_crore: 94,
-    loss_display: "₹94 Cr",
-    is_monetary: true,
-    loss_note: "Premium Mumbai land near a Kargil war memorial allocated to a housing society for politicians and defence officials at subsidised rates — bypassing multiple regulations.",
-    status_label: "TRIAL ONGOING",
-    status_class: "s-pending",
-    status_note: "Ashok Chavan resigned as CM (2010). CBI filed charge-sheet. Case ongoing in sessions court. Chavan notably joined the BJP in 2024 while case was still pending.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "Maharashtra government inquiry; CBI charge-sheet",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 ADARSH HOUSING SCAM (2010)\n\nPremium Mumbai land near a Kargil memorial allotted to politicians & officials at subsidised rates.\nCM: Ashok Chavan (INC, Maharashtra)\nStatus: CBI charge-sheet filed; trial ongoing (Chavan since joined BJP, 2024)\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "antrix-devas",
-    name: "Antrix–Devas S-Band Deal",
-    year: 2011,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Space / Dept. of Space",
-    minister: "G. Madhavan Nair (ISRO Chairman)",
-    loss_crore: 200000,
-    loss_display: "₹2L+ Cr",
-    is_monetary: true,
-    loss_note: "ISRO's commercial arm Antrix gave Devas Multimedia exclusive rights to S-band satellite spectrum. CAG estimated potential revenue loss exceeding ₹2 lakh crore.",
-    status_label: "DEAL CANCELLED",
-    status_class: "s-cancelled",
-    status_note: "GoI cancelled deal in 2011. Devas won $1.2 billion arbitration award (UNCITRAL, 2020). India contested; SC liquidated Devas entities in 2022. International asset recovery battle ongoing.",
-    category: "resource",
-    cat_label: "Resource Scam",
-    source: "CAG Report No. 6 of 2011",
-    source_url: "https://cag.gov.in",
-    tweet: "📋 ANTRIX–DEVAS S-BAND DEAL (2005–2011)\n\nISRO's commercial arm gave exclusive S-band satellite spectrum to a private firm. CAG loss est: ₹2L+ Cr.\nChairman: G. Madhavan Nair (ISRO)\nStatus: Deal cancelled 2011; India lost $1.2B arbitration (2020)\nSource: CAG Report No. 6 of 2011\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "coalgate",
-    name: "Coalgate — Coal Block Allocation",
-    year: 2012,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Ministry of Coal (held by PM)",
-    minister: "Manmohan Singh (held Coal portfolio)",
-    loss_crore: 186000,
-    loss_display: "₹1.86L Cr",
-    is_monetary: true,
-    loss_note: "CAG Report No. 7 of 2012–13 estimated ₹1,85,591 Cr in losses from coal blocks allocated to private companies without competitive bidding between 2004 and 2009.",
-    status_label: "214 BLOCKS CANCELLED",
-    status_class: "s-ongoing",
-    status_note: "SC cancelled 214 of 218 coal block allocations in 2014. CBI filed 26+ FIRs. Several corporates fined or convicted. Manmohan Singh discharged by trial court. Cases still active.",
-    category: "resource",
-    cat_label: "Resource Scam",
-    source: "CAG Report No. 7 of 2012–13",
-    source_url: "https://cag.gov.in/en/audit-report/details/36741",
-    tweet: "📋 COALGATE (2012)\n\nCAG estimated ₹1,85,591 Cr loss — coal blocks given to private firms without competitive bidding.\nMinistry: Coal (held by PM Manmohan Singh)\nStatus: SC cancelled 214 blocks (2014); 26+ CBI FIRs; cases ongoing\nSource: CAG Report No. 7 of 2012–13\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "3g-roaming",
-    name: "3G Intra-Circle Roaming Scam",
-    year: 2012,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Ministry of Telecom",
-    minister: "Kapil Sibal (Telecom Minister)",
-    loss_crore: 28000,
-    loss_display: "₹28,000 Cr",
-    is_monetary: true,
-    loss_note: "CAG found that telecom companies provided 3G services in circles where they held no 3G licence — via roaming agreements — causing an estimated ₹28,000 Cr revenue loss.",
-    status_label: "CAG FLAGGED",
-    status_class: "s-pending",
-    status_note: "CAG Report No. 9 of 2013 flagged the issue. TRAI and DoT issued notices. Telcos paid some penalties. No criminal convictions resulted.",
-    category: "resource",
-    cat_label: "Resource Scam",
-    source: "CAG Report No. 9 of 2013",
-    source_url: "https://cag.gov.in",
-    tweet: "📋 3G INTRA-CIRCLE ROAMING (2012)\n\nCAG estimated ₹28,000 Cr revenue loss — telecoms provided 3G in unlicensed circles via roaming.\nMinistry: Telecom (Kapil Sibal)\nStatus: CAG flagged; regulatory action only; no criminal convictions\nSource: CAG Report No. 9 of 2013\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "agusta",
-    name: "AgustaWestland VVIP Helicopter Deal",
-    year: 2013,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Ministry of Defence",
-    minister: "A.K. Antony (Defence Minister)",
-    loss_crore: 3600,
-    loss_display: "₹3,600 Cr",
-    is_monetary: true,
-    loss_note: "₹3,600 Cr deal for 12 VVIP helicopters cancelled after an Italian court found AgustaWestland/Finmeccanica paid bribes to Indian officials to win the contract.",
-    status_label: "ED ONGOING",
-    status_class: "s-ongoing",
-    status_note: "Deal cancelled by NDA govt (2014). Italian court convicted Finmeccanica CEO. Middleman Christian Michel extradited from UAE (2018); in judicial custody. ED trials ongoing.",
-    category: "defence",
-    cat_label: "Defence",
-    source: "Italian court records; CBI/ED charge-sheets",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 AGUSTA WESTLAND VVIP HELICOPTER (2013)\n\n₹3,600 Cr deal cancelled — Italian court found bribes paid to Indian officials.\nMinistry: Defence (A.K. Antony)\nStatus: Middleman Christian Michel in custody; ED trials ongoing\nSource: CBI/ED, Italian court records\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "national-herald",
-    name: "National Herald Case",
-    year: 2012,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Congress Party Entity",
-    minister: "Sonia Gandhi · Rahul Gandhi",
-    loss_crore: 2000,
-    loss_display: "₹2,000 Cr",
-    is_monetary: true,
-    loss_note: "Congress allegedly acquired Associated Journals Ltd (National Herald's publisher) assets worth ~₹2,000 Cr via a ₹90 Cr interest-free loan write-off through Young Indian.",
-    status_label: "ED CHARGESHEET",
-    status_class: "s-ongoing",
-    status_note: "BJP leader Subramanian Swamy filed complaint (2012). Both summoned by trial court. ED filed charge-sheet in 2023. Trial court proceedings ongoing.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "ED charge-sheet 2023; Swamy's complaint",
-    source_url: "https://enforcementdirectorate.gov.in",
-    tweet: "📋 NATIONAL HERALD CASE (2012)\n\nCongress allegedly acquired ₹2,000 Cr newspaper assets via ₹90 Cr loan write-off through Young Indian.\nKey: Sonia Gandhi, Rahul Gandhi\nStatus: ED filed charge-sheet (2023); trial ongoing\nSource: ED charge-sheet\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "saradha",
-    name: "Saradha Chit Fund Scam",
-    year: 2013,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "SEBI / West Bengal State",
-    minister: "Sudipta Sen (Saradha Group)",
-    loss_crore: 2500,
-    loss_display: "₹2,500 Cr",
-    is_monetary: true,
-    loss_note: "Saradha Group ran a Ponzi scheme collecting ₹2,500 Cr from ~1.7 million small investors across Bengal and the Northeast. TMC leaders (UPA ally) were politically linked.",
-    status_label: "MULTIPLE CONVICTIONS",
-    status_class: "s-convicted",
-    status_note: "Sudipta Sen arrested (2013); CBI took over. Multiple TMC leaders arrested. Partial convictions secured. Investor compensation ongoing through SEBI and court orders.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "CBI / SFIO investigation; West Bengal inquiry",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 SARADHA CHIT FUND (2013)\n\n₹2,500 Cr Ponzi scheme defrauded ~1.7 million investors. TMC leaders (UPA ally) politically linked.\nKey: Sudipta Sen (Saradha Group)\nStatus: Multiple convictions; TMC leaders arrested\nSource: CBI investigation\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  // ════════════════════ POST-2014 ════════════════════
-
-  {
-    id: "vyapam",
-    name: "Vyapam Scam",
-    year: 2013,
-    era: "post",
-    era_label: "BJP · MADHYA PRADESH",
-    era_class: "eb-bjp",
-    ministry: "Madhya Pradesh State Exam Boards",
-    minister: "Shivraj Singh Chouhan (CM, MP)",
-    loss_crore: 0,
-    loss_display: "Exam Rigging",
-    is_monetary: false,
-    loss_note: "Systematic rigging of 13 government recruitment and entrance exams in Madhya Pradesh. Candidates paid bribes for placement. 2,500+ accused. 40+ deaths of witnesses and accused.",
-    status_label: "CBI ONGOING",
-    status_class: "s-ongoing",
-    status_note: "CBI took over from state STF in 2015 (SC order). 200+ charge-sheets filed. Multiple convictions secured at lower courts. Investigation still active. SC monitored proceedings.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "SIT / CBI charge-sheets; SC orders (2015)",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 VYAPAM SCAM (2003–2013 — BJP MP Govt)\n\nSystematic rigging of 13 state exams in Madhya Pradesh. 2,500+ accused. 40+ deaths.\nCM: Shivraj Singh Chouhan (BJP)\nStatus: CBI ongoing; 200+ charge-sheets filed; multiple convictions\nSource: CBI / SIT\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "rafale",
-    name: "Rafale Fighter Jet Deal",
-    year: 2016,
-    era: "post",
-    era_label: "NDA-1",
-    era_class: "eb-nda1",
-    ministry: "Ministry of Defence",
-    minister: "Manohar Parrikar → Nirmala Sitharaman",
-    loss_crore: 59000,
-    loss_display: "₹59,000 Cr",
-    is_monetary: true,
-    loss_note: "₹59,000 Cr deal for 36 Rafale jets. CAG 2019 found India paid 2.86% more than benchmark price. Pricing details redacted in tabled report. Offset contract given to Reliance Defence (not HAL) was contested.",
-    status_label: "SC REVIEW CLOSED",
-    status_class: "s-sc",
-    status_note: "SC dismissed review petition in Nov 2019 finding no case for investigation. Justice K.M. Joseph filed a notable dissenting note. CAG pricing comparison redacted in tabled version — full report not made public.",
-    category: "defence",
-    cat_label: "Defence",
-    source: "CAG Report No. 3 of 2019; SC order Nov 2019",
-    source_url: "https://cag.gov.in",
-    tweet: "📋 RAFALE DEAL (2016)\n\n₹59,000 Cr for 36 jets. CAG: India paid 2.86% above benchmark. Offset to Reliance (not HAL) contested.\nMin: Defence (Parrikar, then Sitharaman)\nStatus: SC closed review (2019); J. Joseph dissented; pricing redacted in CAG report\nSource: CAG Report No. 3 of 2019\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "pnb-nirav",
-    name: "PNB – Nirav Modi Fraud",
-    year: 2018,
-    era: "post",
-    era_label: "NDA-1",
-    era_class: "eb-nda1",
-    ministry: "Finance / PSU Banking",
-    minister: "Arun Jaitley (Finance Minister)",
-    loss_crore: 13500,
-    loss_display: "₹13,578 Cr",
-    is_monetary: true,
-    loss_note: "Punjab National Bank officials issued fraudulent Letters of Undertaking (LoUs) for Nirav Modi and Mehul Choksi firms over 7 years — India's then-largest banking fraud.",
-    status_label: "EXTRADITED",
-    status_class: "s-ongoing",
-    status_note: "Nirav Modi fled India (Feb 2018), arrested in UK (2019), extradited to India in 2024. Mehul Choksi — Antiguan citizen — still evading extradition. CBI/ED trials ongoing.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "CBI / ED FIR Feb 2018; PNB stock exchange disclosure",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 PNB–NIRAV MODI FRAUD (2018)\n\n₹13,578 Cr bank fraud via fake Letters of Undertaking over 7 years — largest banking fraud at the time.\nKey: Nirav Modi, Mehul Choksi\nStatus: Nirav extradited to India (2024); Choksi still evading extradition\nSource: CBI/ED FIR, 2018\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "ilfs",
-    name: "IL&FS Debt Collapse",
-    year: 2018,
-    era: "post",
-    era_label: "NDA-1",
-    era_class: "eb-nda1",
-    ministry: "Finance / MCA",
-    minister: "Piyush Goyal / Arun Jaitley",
-    loss_crore: 91000,
-    loss_display: "₹91,000 Cr",
-    is_monetary: true,
-    loss_note: "Infrastructure Leasing & Financial Services collapsed with ₹91,000 Cr in debt. SFIO found governance failures, circular transactions between subsidiaries, and that rating agencies were misled.",
-    status_label: "SFIO / NCLT",
-    status_class: "s-ongoing",
-    status_note: "Government superseded board (Oct 2018). SFIO arrested key executives including former CMD. NCLT resolution proceedings ongoing. Partial asset recovery achieved.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "SFIO Report 2019; MCA investigation; NCLT filings",
-    source_url: "https://www.mca.gov.in",
-    tweet: "📋 IL&FS COLLAPSE (2018)\n\nInfrastructure giant collapsed with ₹91,000 Cr debt. SFIO found governance failure and circular transactions.\nStatus: SFIO arrests; NCLT resolution ongoing\nSource: SFIO Report 2019, MCA\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "pmc-bank",
-    name: "PMC Bank Fraud",
-    year: 2019,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Finance / RBI",
-    minister: "Nirmala Sitharaman (Finance)",
-    loss_crore: 6500,
-    loss_display: "₹6,500 Cr",
-    is_monetary: true,
-    loss_note: "Punjab & Maharashtra Cooperative Bank concealed ₹6,500 Cr in loans to the HDIL group from RBI for years. Over 9 lakh depositors had their savings frozen.",
-    status_label: "BANK MERGED",
-    status_class: "s-ongoing",
-    status_note: "RBI imposed restrictions in Oct 2019. HDIL promoters arrested by EOW/ED. PMC Bank merged into Unity Small Finance Bank (2022). Depositors partially compensated over 5 years.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "RBI order Oct 2019; ED / EOW charge-sheets",
-    source_url: "https://www.rbi.org.in",
-    tweet: "📋 PMC BANK FRAUD (2019)\n\n₹6,500 Cr in hidden loans to HDIL. 9+ lakh depositors' savings frozen for years.\nKey: HDIL promoters, PMC Bank management\nStatus: Bank merged into Unity SFB (2022); ED assets attached\nSource: RBI / ED\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "yes-bank",
-    name: "Yes Bank Crisis",
-    year: 2020,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Finance / RBI",
-    minister: "Nirmala Sitharaman (Finance)",
-    loss_crore: 13000,
-    loss_display: "₹13,000 Cr",
-    is_monetary: true,
-    loss_note: "Yes Bank NPAs ballooned to ₹40,709 Cr. Rana Kapoor extended loans to companies that paid kickbacks back to his wife's firm. Depositors feared total loss before RBI intervention.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "RBI took over board (Mar 2020); SBI-led consortium rescued bank. ED arrested Rana Kapoor. Special PMLA court convicted Kapoor — 13 years RI + ₹2 Cr fine (2024).",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "ED / CBI charge-sheet; PMLA special court order 2024",
-    source_url: "https://enforcementdirectorate.gov.in",
-    tweet: "📋 YES BANK CRISIS (2020)\n\n₹13,000 Cr in fraudulent loans. NPAs hit ₹40,709 Cr.\nKey: Rana Kapoor (Yes Bank MD/CEO)\nStatus: CONVICTED — 13 years RI by PMLA special court (2024)\nSource: ED charge-sheet, PMLA court\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "pm-cares",
-    name: "PM CARES Fund — Transparency Concerns",
-    year: 2020,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Prime Minister's Office",
-    minister: "Narendra Modi (PM)",
-    loss_crore: 10000,
-    loss_display: "₹10,000+ Cr",
-    is_monetary: true,
-    loss_note: "PM CARES Fund collected ₹10,000+ Cr for COVID-19 relief. Government's position: it is not a government fund, so not subject to CAG audit or RTI Act.",
-    status_label: "NO CAG AUDIT",
-    status_class: "s-sc",
-    status_note: "SC declined to direct CAG audit (Aug 2020). Multiple RTI applications rejected citing non-government status. Private auditor (SARC & Associates) appointed. Full expenditure details still not publicly accessible.",
-    category: "transparency",
-    cat_label: "Transparency",
-    source: "SC order Aug 2020; RTI filings; PMO disclosures",
-    source_url: "https://pmcares.gov.in",
-    tweet: "📋 PM CARES FUND (2020)\n\n₹10,000+ Cr raised for COVID — exempted from CAG audit and RTI.\nMinistry: PMO (PM Modi)\nStatus: SC declined to order CAG audit (2020); transparency concerns unresolved\nSource: SC order Aug 2020, RTI rejections\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "abg-shipyard",
-    name: "ABG Shipyard Bank Fraud",
-    year: 2022,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Finance / PSU Banking",
-    minister: "Nirmala Sitharaman (Finance)",
-    loss_crore: 22842,
-    loss_display: "₹22,842 Cr",
-    is_monetary: true,
-    loss_note: "Largest bank fraud in India according to CBI. ABG Shipyard and its directors defrauded 28 banks of ₹22,842 Cr through fraudulent transactions, fund diversion and falsified books.",
-    status_label: "CBI CHARGESHEET",
-    status_class: "s-ongoing",
-    status_note: "CBI filed India's largest-ever bank fraud FIR (Feb 2022), based on SBI complaint. Promoter Rishi Agarwal and 7 others arrested. Charge-sheet filed. Trial ongoing.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "CBI FIR Feb 2022; SBI complaint",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 ABG SHIPYARD FRAUD (2022)\n\nIndia's largest bank fraud (per CBI) — ₹22,842 Cr defrauded from 28 banks.\nKey: Rishi Agarwal (ABG Shipyard CMD)\nStatus: CBI arrested promoters; charge-sheet filed; trial ongoing\nSource: CBI FIR, Feb 2022\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "electoral-bonds",
-    name: "Electoral Bonds Scheme",
-    year: 2018,
-    era: "post",
-    era_label: "NDA-1 → NDA-2",
-    era_class: "eb-nda1",
-    ministry: "Finance / Election Commission",
-    minister: "Arun Jaitley (introduced) → Nirmala Sitharaman",
-    loss_crore: 16518,
-    loss_display: "₹16,518 Cr",
-    is_monetary: true,
-    loss_note: "Total electoral bonds sold 2018–2024: ₹16,518 Cr. Scheme allowed anonymous corporate donations to political parties. Data revealed companies donated after ED/CBI raids on them.",
-    status_label: "SC STRUCK DOWN",
-    status_class: "s-sc",
-    status_note: "SC 5-judge bench unanimously struck down scheme (Feb 2024) as unconstitutional — violates right to information. Ordered SBI to disclose all donors. Top recipient: BJP ₹6,060 Cr. SIT demand by opposition pending.",
-    category: "transparency",
-    cat_label: "Transparency",
-    source: "SC judgment — ADR vs Union of India, Feb 2024; SBI data",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 ELECTORAL BONDS (2018–2024)\n\nTotal bonds: ₹16,518 Cr. SC struck down as unconstitutional (Feb 2024).\nTop recipient: BJP ₹6,060 Cr | Congress ₹1,422 Cr\nDonors linked to ED/CBI raids on their companies\nSource: SC judgment; SBI disclosure data\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "pegasus",
-    name: "Pegasus Surveillance Controversy",
-    year: 2021,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Home / Intelligence",
-    minister: "Amit Shah (Home Minister)",
-    loss_crore: 0,
-    loss_display: "Civil Liberties",
-    is_monetary: false,
-    loss_note: "Pegasus Project / Amnesty investigation found phone numbers of Indian journalists, opposition politicians, constitutional judges and activists on the Pegasus spyware target list.",
-    status_label: "SC INCONCLUSIVE",
-    status_class: "s-sc",
-    status_note: "SC-appointed technical committee found no conclusive evidence of Pegasus on examined phones (2022 report). Government neither confirmed nor denied using the spyware. SC criticised government's lack of cooperation.",
-    category: "transparency",
-    cat_label: "Transparency",
-    source: "SC Technical Committee Report 2022; Pegasus Project / Amnesty International",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 PEGASUS SURVEILLANCE (2021)\n\nJournalists, opposition politicians, constitutional judges allegedly targeted by Israeli Pegasus spyware.\nMinistry: Home (Amit Shah)\nStatus: SC technical committee inconclusive (2022); govt neither confirmed nor denied\nSource: SC report; Amnesty/Pegasus Project\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  // ════════════════════ MORE PRE-2014 FINANCIAL ════════════════════
-
-  {
-    id: "harshad-mehta",
-    name: "Harshad Mehta Securities Scam",
-    year: 1992,
-    era: "pre",
-    era_label: "INC GOVT",
-    era_class: "eb-inc",
-    ministry: "Finance / RBI / SEBI",
-    minister: "Manmohan Singh (Finance Min.)",
-    loss_crore: 4000,
-    loss_display: "₹4,000 Cr",
-    is_monetary: true,
-    loss_note: "Harshad Mehta exploited loopholes in the banking system to siphon ₹4,000 Cr from banks into the stock market, inflating BSE Sensex by 4x before the scam collapsed.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Harshad Mehta convicted in 9 of 27 cases before dying in judicial custody (2001). Key convictions: cheating and forgery. Multiple bank officials also convicted. Keetan Parekh scandal followed similar playbook in 2001.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "Joint Parliamentary Committee Report on Securities Scam, 1993",
-    source_url: "https://www.sebi.gov.in",
-    tweet: "📋 HARSHAD MEHTA SCAM (1992)\n\n₹4,000 Cr siphoned from banks into stock market — BSE Sensex inflated 4x before collapse.\nMinistry: Finance (Manmohan Singh)\nStatus: Mehta convicted in 9 of 27 cases; died in custody 2001\nSource: JPC Report 1993\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "telgi-stamp",
-    name: "Telgi Fake Stamp Paper Scam",
-    year: 2003,
-    era: "pre",
-    era_label: "NDA-1 / STATE GOVTS",
-    era_class: "eb-upa1",
-    ministry: "State Govts (MH, KA, AP, others)",
-    minister: "Abdul Karim Telgi (Mastermind)",
-    loss_crore: 30000,
-    loss_display: "₹30,000 Cr",
-    is_monetary: true,
-    loss_note: "Abdul Karim Telgi ran a nationwide fake stamp paper racket spanning 12 states — forging government stamp papers worth an estimated ₹20,000–30,000 Cr. Police officials and politicians across party lines were implicated.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Telgi convicted and sentenced to 30 years rigorous imprisonment (2006). Multiple police officers and officials convicted. Telgi died in judicial custody (2017). SIT found links to police-political nexus across states.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "SIT Report; Karnataka / Maharashtra High Court orders",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 TELGI STAMP PAPER SCAM (2003)\n\n₹30,000 Cr fake stamp paper racket across 12 states. Police-political nexus exposed.\nKey: Abdul Karim Telgi\nStatus: CONVICTED — 30 years RI (2006); died in custody 2017\nSource: SIT report\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "ketan-parekh",
-    name: "Ketan Parekh Stock Scam",
-    year: 2001,
-    era: "pre",
-    era_label: "NDA-1 (Vajpayee)",
-    era_class: "eb-upa1",
-    ministry: "Finance / SEBI / RBI",
-    minister: "Yashwant Sinha (Finance Min.)",
-    loss_crore: 1250,
-    loss_display: "₹1,250 Cr",
-    is_monetary: true,
-    loss_note: "Ketan Parekh manipulated stock prices of 10 companies (K-10 stocks) by borrowing ₹1,250 Cr from cooperative banks — repeating the Harshad Mehta playbook. Massive retail investor losses when bubble burst.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Parekh convicted by SEBI (debarred from markets until 2017, later extended to 2030). Criminal case convicted him of cheating. Madhavpura Mercantile Co-op Bank collapsed as a result.",
-    category: "financial",
-    cat_label: "Financial Crime",
-    source: "SEBI investigation report 2001; RBI report on cooperative banks",
-    source_url: "https://www.sebi.gov.in",
-    tweet: "📋 KETAN PAREKH STOCK SCAM (2001)\n\n₹1,250 Cr borrowed from banks to pump K-10 stocks — retail investors wiped out when bubble burst.\nMinistry: Finance (Yashwant Sinha, NDA)\nStatus: CONVICTED; debarred from markets until 2030\nSource: SEBI investigation 2001\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "karnataka-mining",
-    name: "Karnataka Illegal Mining Scam",
-    year: 2011,
-    era: "pre",
-    era_label: "BJP · KARNATAKA",
-    era_class: "eb-upa2",
-    ministry: "Karnataka State — Mining",
-    minister: "B.S. Yediyurappa (CM, BJP Karnataka)",
-    loss_crore: 16085,
-    loss_display: "₹16,085 Cr",
-    is_monetary: true,
-    loss_note: "Supreme Court-ordered Lokayukta report found illegal iron ore mining in Bellary and other districts caused ₹16,085 Cr loss. The Reddy brothers (BJP MPs) ran a mining empire with political protection.",
-    status_label: "CONVICTIONS + BANS",
-    status_class: "s-convicted",
-    status_note: "Yediyurappa resigned as CM (2011), arrested (2011), later acquitted. Janardhan Reddy (BJP MP) arrested 2011 by CBI, later released on bail. SC banned mining in Bellary. Multiple officials convicted.",
-    category: "resource",
-    cat_label: "Resource Scam",
-    source: "Karnataka Lokayukta Report 2011; SC orders (2011)",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 KARNATAKA MINING SCAM (2011)\n\n₹16,085 Cr illegal iron ore mining — Reddy brothers (BJP MPs) ran a mining empire.\nCM: B.S. Yediyurappa (BJP Karnataka)\nStatus: Multiple convictions; SC banned mining in Bellary\nSource: Karnataka Lokayukta Report 2011\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "cash-for-votes",
-    name: "Cash-for-Votes Scandal",
-    year: 2008,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Parliament / PMO",
-    minister: "Manmohan Singh (PM)",
-    loss_crore: 0,
-    loss_display: "Democracy Subverted",
-    is_monetary: false,
-    loss_note: "During the UPA government's trust vote on the India-US nuclear deal (July 2008), BJP MPs produced wads of cash on the Parliament floor, alleging they were bribed to vote for UPA. Three MPs were suspended.",
-    status_label: "INCONCLUSIVE",
-    status_class: "s-sc",
-    status_note: "SC declined to examine it in detail. Investigations inconclusive — no conclusive finding of who paid the bribe. Trust vote passed 275–256. India-US nuclear deal went through.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "Parliamentary records, July 22, 2008; SC proceedings",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 CASH-FOR-VOTES (2008)\n\nBJP MPs displayed wads of cash in Parliament — alleged bribery during UPA's trust vote on India-US nuclear deal.\nPM: Manmohan Singh\nStatus: Investigations inconclusive; trust vote passed 275–256\nSource: Parliamentary records, July 2008\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "land-for-jobs",
-    name: "Land for Railway Jobs Scam",
-    year: 2006,
-    era: "pre",
-    era_label: "UPA-1 / UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Indian Railways",
-    minister: "Lalu Prasad Yadav (Railway Min.)",
-    loss_crore: 18,
-    loss_display: "₹18 Cr",
-    is_monetary: true,
-    loss_note: "Railway jobs were allegedly given in exchange for land deeds from applicants' families to entities linked to Lalu Prasad Yadav. Properties transferred to Rabri Devi and family members.",
-    status_label: "ED CHARGESHEET",
-    status_class: "s-ongoing",
-    status_note: "CBI filed charge-sheet against Lalu Prasad Yadav, Rabri Devi, and their daughters (2022–23). ED attached properties. Lalu already serving sentence in Fodder Scam. Trial ongoing.",
-    category: "corruption",
-    cat_label: "Corruption",
-    source: "CBI FIR 2022; ED charge-sheet 2023",
-    source_url: "https://cbi.gov.in",
-    tweet: "📋 LAND FOR RAILWAY JOBS (2006)\n\nRailway jobs allegedly exchanged for land deeds — transferred to Lalu family entities.\nMin: Lalu Prasad Yadav (Railways, UPA)\nStatus: CBI chargesheet filed (2022); ED case ongoing\nSource: CBI FIR 2022\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  // ════════════════════ PRE-2014 TERROR ATTACKS ════════════════════
-
-  {
-    id: "bombay-blasts-1993",
-    name: "1993 Bombay Serial Blasts",
-    year: 1993,
-    era: "pre",
-    era_label: "INC GOVT",
-    era_class: "eb-inc",
-    ministry: "Home Ministry",
-    minister: "S.B. Chavan (Home Min.)",
-    loss_crore: 0,
-    loss_display: "257 Killed",
-    is_monetary: false,
-    loss_note: "13 coordinated bomb blasts across Bombay on March 12, 1993. 257 killed, 713 injured. Orchestrated by Dawood Ibrahim from Pakistan with ISI support in retaliation for the Babri Masjid demolition.",
-    status_label: "PARTIAL CONVICTIONS",
-    status_class: "s-convicted",
-    status_note: "Yakub Memon executed (2015). Tiger Memon and Dawood Ibrahim remain at large in Pakistan. 100+ convicted by TADA court. Dawood Ibrahim still on India's most wanted list, believed to be in Karachi.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "TADA Court judgment 2006; NIA records",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 1993 BOMBAY BLASTS\n\n13 coordinated blasts. 257 killed, 713 injured. Dawood Ibrahim + ISI orchestrated.\nMinistry: Home (INC govt)\nStatus: Yakub Memon executed 2015; Dawood Ibrahim still at large in Pakistan\nSource: TADA Court judgment 2006\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "parliament-attack-2001",
-    name: "Parliament Attack",
-    year: 2001,
-    era: "pre",
-    era_label: "NDA-1 (Vajpayee)",
-    era_class: "eb-upa1",
-    ministry: "Home Ministry",
-    minister: "L.K. Advani (Home Min.)",
-    loss_crore: 0,
-    loss_display: "14 Killed",
-    is_monetary: false,
-    loss_note: "5 LeT/JeM terrorists attacked Parliament on December 13, 2001. 9 security personnel and 1 gardener killed. Terrorists neutralized. Nearly triggered a full-scale India-Pakistan war.",
-    status_label: "CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Afzal Guru convicted of conspiracy by SC, executed on February 9, 2013 (UPA govt). Shaukat Hussain Guru convicted. India launched Operation Parakram mobilizing troops along the Pakistan border.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "SC judgment — State (NCT of Delhi) vs Navjot Sandhu, 2005",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 PARLIAMENT ATTACK (2001)\n\n5 LeT/JeM terrorists stormed Parliament. 14 killed. Nearly triggered India-Pakistan war.\nMinistry: Home (L.K. Advani, NDA)\nAfzal Guru executed 2013 (under UPA)\nSource: SC judgment 2005\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "mumbai-train-2006",
-    name: "Mumbai 7/11 Train Bombings",
-    year: 2006,
-    era: "pre",
-    era_label: "UPA-1",
-    era_class: "eb-upa1",
-    ministry: "Home Ministry",
-    minister: "Shivraj Patil (Home Min.)",
-    loss_crore: 0,
-    loss_display: "209 Killed",
-    is_monetary: false,
-    loss_note: "7 coordinated bomb blasts in Mumbai suburban trains on July 11, 2006 within 11 minutes. 209 killed, 714 injured. Lashkar-e-Taiba and Students Islamic Movement of India (SIMI) linked.",
-    status_label: "12 CONVICTED",
-    status_class: "s-convicted",
-    status_note: "Maharashtra ATS arrested suspects. Sessions court convicted 12 and sentenced 5 to death (2015). Bombay HC confirmed 5 death sentences and 7 life sentences (2017). SC appeal pending.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "Maharashtra ATS charge-sheet; Sessions Court judgment 2015",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 MUMBAI 7/11 TRAIN BOMBINGS (2006)\n\n7 blasts in 11 minutes on Mumbai trains. 209 killed, 714 injured. LeT + SIMI linked.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: 12 convicted; 5 death sentences (HC 2017)\nSource: Maharashtra ATS / Sessions Court 2015\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "samjhauta-2007",
-    name: "Samjhauta Express Bombing",
-    year: 2007,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry / NIA",
-    minister: "Shivraj Patil (Home Min.)",
-    loss_crore: 0,
-    loss_display: "68 Killed",
-    is_monetary: false,
-    loss_note: "Two bomb blasts on the Samjhauta Express (Delhi–Lahore train) on February 18, 2007. 68 killed — mostly Pakistani nationals. IEDs placed in luggage compartments.",
-    status_label: "ALL ACQUITTED",
-    status_class: "s-acquitted",
-    status_note: "NIA charge-sheeted Swami Aseemanand and others. NIA special court acquitted all accused for lack of evidence (2019). No one has been convicted. The case remains officially unsolved.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "NIA charge-sheet; NIA Special Court judgment, March 2019",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 SAMJHAUTA EXPRESS BOMBING (2007)\n\n2 blasts on Delhi–Lahore train. 68 killed, mostly Pakistani nationals.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: NIA court acquitted all accused (2019) — case officially unsolved\nSource: NIA Special Court judgment 2019\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "jaipur-2008",
-    name: "Jaipur Serial Bombings",
-    year: 2008,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry",
-    minister: "Shivraj Patil (Home Min.)",
-    loss_crore: 0,
-    loss_display: "63 Killed",
-    is_monetary: false,
-    loss_note: "8 coordinated bomb blasts across Jaipur on May 13, 2008. 63 killed, 216 injured. Indian Mujahideen claimed responsibility. Blasts occurred at crowded markets near temples.",
-    status_label: "CONVICTIONS",
-    status_class: "s-convicted",
-    status_note: "Rajasthan police and NIA arrested multiple accused. Trial court convicted several IM operatives. Death sentences awarded to some convicts. Cases at various appellate stages.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "NIA investigation records; Rajasthan Sessions Court",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 JAIPUR BOMBINGS (2008)\n\n8 blasts across crowded markets. 63 killed, 216 injured. Indian Mujahideen.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: Multiple convictions; death sentences awarded\nSource: NIA investigation records\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "ahmedabad-2008",
-    name: "Ahmedabad Serial Bombings",
-    year: 2008,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry",
-    minister: "Shivraj Patil (Home Min.)",
-    loss_crore: 0,
-    loss_display: "56 Killed",
-    is_monetary: false,
-    loss_note: "21 bomb blasts across Ahmedabad on July 26, 2008 — one day after the Bangalore blasts. 56 killed, 200+ injured. Indian Mujahideen sent an email warning 5 minutes before the blasts.",
-    status_label: "38 DEATH SENTENCES",
-    status_class: "s-convicted",
-    status_note: "Gujarat sessions court convicted 49 accused (2022) — 38 sentenced to death, 11 to life imprisonment. Largest mass conviction in a terror case in Indian history at the time.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "Gujarat Sessions Court judgment, February 2022; NIA records",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 AHMEDABAD BOMBINGS (2008)\n\n21 blasts in one day. 56 killed, 200+ injured. Indian Mujahideen.\nMinistry: Home (Shivraj Patil, UPA)\nStatus: 49 convicted — 38 death sentences (Gujarat Sessions Court, 2022)\nSource: Gujarat Sessions Court 2022\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "26-11",
-    name: "26/11 Mumbai Terror Attack",
-    year: 2008,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry",
-    minister: "Shivraj Patil (Home Min.) — resigned",
-    loss_crore: 0,
-    loss_display: "166 Killed",
-    is_monetary: false,
-    loss_note: "10 LeT terrorists from Pakistan launched coordinated attacks across Mumbai — Taj Hotel, Oberoi, CST, Nariman House — over 60 hours from November 26–29, 2008. 166 killed including 26 foreigners.",
-    status_label: "KASAB EXECUTED",
-    status_class: "s-convicted",
-    status_note: "Ajmal Kasab (sole captured terrorist) executed on November 21, 2012 (UPA govt). Home Minister Shivraj Patil resigned. Pakistan's complicity established — mastermind Hafiz Saeed and others still free in Pakistan.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "SC judgment in Kasab case (2012); Parliamentary inquiry",
-    source_url: "https://main.sci.gov.in",
-    tweet: "📋 26/11 MUMBAI ATTACK (2008)\n\n10 Pakistani LeT terrorists. 166 killed. 60-hour siege of Mumbai.\nMinistry: Home (Shivraj Patil — resigned)\nStatus: Kasab executed 2012; masterminds Hafiz Saeed still free in Pakistan\nSource: SC judgment 2012\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "mumbai-blasts-2011",
-    name: "Mumbai Triple Blasts",
-    year: 2011,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry",
-    minister: "P. Chidambaram (Home Min.)",
-    loss_crore: 0,
-    loss_display: "27 Killed",
-    is_monetary: false,
-    loss_note: "Three coordinated blasts at Zaveri Bazar, Opera House, and Dadar on July 13, 2011. 27 killed, 130 injured. Indian Mujahideen claimed responsibility just two years after 26/11.",
-    status_label: "CONVICTIONS",
-    status_class: "s-convicted",
-    status_note: "NIA arrested multiple IM operatives. Yasin Bhatkal (IM co-founder) arrested 2013, convicted. Multiple others sentenced. Attack occurred despite heightened security post-26/11.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "NIA charge-sheet; NIA court convictions",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 MUMBAI TRIPLE BLASTS (2011)\n\n3 coordinated blasts. 27 killed, 130 injured. Indian Mujahideen.\nMinistry: Home (P. Chidambaram, UPA)\nStatus: Yasin Bhatkal and others convicted\nSource: NIA records\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "hyderabad-2013",
-    name: "Hyderabad Dilsukhnagar Bombings",
-    year: 2013,
-    era: "pre",
-    era_label: "UPA-2",
-    era_class: "eb-upa2",
-    ministry: "Home Ministry",
-    minister: "Sushilkumar Shinde (Home Min.)",
-    loss_crore: 0,
-    loss_display: "17 Killed",
-    is_monetary: false,
-    loss_note: "Two bomb blasts at Dilsukhnagar bus stop, Hyderabad on February 21, 2013. 17 killed, 119 injured. Indian Mujahideen linked. One of the last major IM attacks before the group was dismantled.",
-    status_label: "CONVICTIONS",
-    status_class: "s-convicted",
-    status_note: "Yasin Bhatkal (IM co-founder) and Asadullah Akhtar convicted by NIA court (2016) and sentenced to death. Multiple others convicted with life sentences.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "NIA Special Court judgment, 2016",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 HYDERABAD BOMBINGS (2013)\n\n2 blasts at Dilsukhnagar. 17 killed, 119 injured. Indian Mujahideen.\nMinistry: Home (Shinde, UPA)\nStatus: Yasin Bhatkal sentenced to death (NIA court 2016)\nSource: NIA Special Court judgment 2016\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  // ════════════════════ POST-2014 TERROR ATTACKS ════════════════════
-
-  {
-    id: "pathankot-2016",
-    name: "Pathankot Airbase Attack",
-    year: 2016,
-    era: "post",
-    era_label: "NDA-1",
-    era_class: "eb-nda1",
-    ministry: "Home / Defence",
-    minister: "Rajnath Singh (Home) · Manohar Parrikar (Defence)",
-    loss_crore: 0,
-    loss_display: "7 Killed",
-    is_monetary: false,
-    loss_note: "JeM terrorists attacked the Pathankot Air Force Station on January 2, 2016. 7 Indian security personnel killed. Attack came weeks after PM Modi's surprise visit to Pakistan's Nawaz Sharif.",
-    status_label: "SUSPECTS IDENTIFIED",
-    status_class: "s-ongoing",
-    status_note: "NIA investigation identified JeM operatives. Pakistan briefly investigated but took no action. Masood Azhar (JeM chief) still based in Pakistan. NIA case ongoing.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "NIA investigation records; Ministry of Defence statement",
-    source_url: "https://nia.gov.in",
-    tweet: "📋 PATHANKOT ATTACK (2016)\n\nJeM terrorists attacked Pathankot Air Force base. 7 security personnel killed.\nMinistry: Home/Defence (NDA govt)\nStatus: JeM operatives identified; Masood Azhar still in Pakistan\nSource: NIA records\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "uri-2016",
-    name: "Uri Army Camp Attack",
-    year: 2016,
-    era: "post",
-    era_label: "NDA-1",
-    era_class: "eb-nda1",
-    ministry: "Defence Ministry",
-    minister: "Manohar Parrikar (Defence Min.)",
-    loss_crore: 0,
-    loss_display: "19 Soldiers Killed",
-    is_monetary: false,
-    loss_note: "JeM terrorists attacked the Indian Army's 12 Infantry Brigade HQ in Uri, J&K on September 18, 2016. 19 soldiers killed — deadliest attack on Indian Army in two decades. India responded with cross-LoC surgical strikes.",
-    status_label: "SURGICAL STRIKES",
-    status_class: "s-ongoing",
-    status_note: "India launched surgical strikes across LoC on September 29, 2016 — first public acknowledgement of such an operation. Pakistan denied. JeM masterminds remain in Pakistan.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "MoD press release; DGMO statement Sep 29, 2016",
-    source_url: "https://pib.gov.in",
-    tweet: "📋 URI ATTACK (2016)\n\nJeM attacked Indian Army brigade HQ. 19 soldiers killed — deadliest in 2 decades.\nMinistry: Defence (Parrikar, NDA)\nIndia launched surgical strikes across LoC (Sep 29, 2016)\nSource: MoD / DGMO statement\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-
-  {
-    id: "pulwama-2019",
-    name: "Pulwama CRPF Convoy Attack",
-    year: 2019,
-    era: "post",
-    era_label: "NDA-2",
-    era_class: "eb-nda2",
-    ministry: "Home / Defence",
-    minister: "Amit Shah (Home) · Nirmala Sitharaman (Defence)",
-    loss_crore: 0,
-    loss_display: "40 CRPF Killed",
-    is_monetary: false,
-    loss_note: "JeM suicide bomber Adil Ahmad Dar rammed an explosive-laden vehicle into a CRPF convoy in Pulwama on February 14, 2019. 40 CRPF personnel killed — deadliest terror attack in J&K in decades.",
-    status_label: "BALAKOT AIRSTRIKES",
-    status_class: "s-ongoing",
-    status_note: "India launched Balakot airstrikes on Feb 26, 2019, targeting JeM camp in Pakistan's Khyber Pakhtunkhwa. IAF Wing Cdr Abhinandan shot down, returned after international pressure. Masterminds still in Pakistan.",
-    category: "terrorism",
-    cat_label: "Terror Attack",
-    source: "MoD / MHA statements; IAF Balakot press briefing Feb 2019",
-    source_url: "https://pib.gov.in",
-    tweet: "📋 PULWAMA ATTACK (2019)\n\nJeM suicide bombing on CRPF convoy. 40 CRPF personnel killed.\nMinistry: Home/Defence (NDA govt)\nIndia launched Balakot airstrikes (Feb 26, 2019)\nSource: MoD/MHA statements\n\n#SarkariReceipt flashpoint.watch/receipts"
-  },
-];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let era  = 'all';
@@ -1501,7 +624,98 @@ function render() {
   }).join('');
 }
 
-render();
+// ── Radar Chart ──────────────────────────────────────────────────────────────
+function renderRadar() {
+  if (!CASES.length) return;
+
+  const DIMS = [
+    { key: 'corruption',   label: 'Corruption' },
+    { key: 'resource',     label: 'Resource Scams' },
+    { key: 'financial',    label: 'Financial Crime' },
+    { key: 'defence',      label: 'Defence' },
+    { key: 'terrorism',    label: 'Terror Attacks' },
+    { key: 'transparency', label: 'Transparency' },
+  ];
+
+  // Score per era per dimension: weighted count (loss weight for monetary, casualty proxy for terror)
+  function eraScore(eraCases, dimKey) {
+    const items = eraCases.filter(c => c.category === dimKey);
+    if (!items.length) return 0;
+    if (dimKey === 'terrorism') {
+      // score by number of attacks (each attack = 10pts, capped at 100)
+      return Math.min(100, items.length * 12);
+    }
+    // score by total loss_crore (log-scaled to 0-100)
+    const total = items.reduce((s, c) => s + (c.loss_crore || 0), 0);
+    if (!total) return items.length * 10; // non-monetary: count-based
+    return Math.min(100, Math.round(Math.log10(total + 1) * 20));
+  }
+
+  const pre  = CASES.filter(c => c.era === 'pre');
+  const post = CASES.filter(c => c.era === 'post');
+  const preScores  = DIMS.map(d => eraScore(pre,  d.key));
+  const postScores = DIMS.map(d => eraScore(post, d.key));
+
+  const canvas = document.getElementById('radar-canvas');
+  if (_radarChart) { _radarChart.destroy(); _radarChart = null; }
+
+  _radarChart = new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels: DIMS.map(d => d.label),
+      datasets: [
+        {
+          label: 'Pre-2014 (UPA era)',
+          data: preScores,
+          backgroundColor: 'rgba(245,158,11,0.15)',
+          borderColor: 'rgba(245,158,11,0.85)',
+          pointBackgroundColor: 'rgba(245,158,11,0.9)',
+          pointRadius: 4, borderWidth: 2,
+        },
+        {
+          label: 'Post-2014 (NDA era)',
+          data: postScores,
+          backgroundColor: 'rgba(59,130,246,0.12)',
+          borderColor: 'rgba(59,130,246,0.85)',
+          pointBackgroundColor: 'rgba(59,130,246,0.9)',
+          pointRadius: 4, borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 100, ticks: { display: false, stepSize: 20 },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          angleLines: { color: 'rgba(255,255,255,0.08)' },
+          pointLabels: {
+            color: '#8b95a8', font: { family: "'Space Mono', monospace", size: 11 },
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8b95a8', font: { family: "'Space Mono', monospace", size: 10 }, padding: 20 },
+        },
+        tooltip: {
+          backgroundColor: '#111827', borderColor: '#1e2a3a', borderWidth: 1,
+          titleColor: '#eef2ff', bodyColor: '#8b95a8',
+          titleFont: { family: "'Space Grotesk', sans-serif" },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}/100`,
+          },
+        },
+      },
+    },
+  });
+
+  document.getElementById('radar-wrap').style.display = 'block';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadCases();
 </script>
 </body>
 </html>
