@@ -196,20 +196,6 @@
     .btn-share { background: rgba(29,161,242,0.08); border: 1px solid rgba(29,161,242,0.3); color: #60b8f7; }
     .btn-share:hover { background: rgba(29,161,242,0.18); }
 
-    /* ── Radar Chart ── */
-    .radar-wrap {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-      overflow: hidden; margin-bottom: 28px;
-    }
-    .radar-header {
-      padding: 18px 24px 14px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
-    }
-    .radar-title { font-family: var(--font-m); font-size: 11px; letter-spacing: 0.14em; color: var(--red); }
-    .radar-sub { font-family: var(--font-m); font-size: 10px; color: var(--muted); }
-    .radar-body { padding: 24px; display: flex; justify-content: center; }
-    .radar-body canvas { max-width: 480px; width: 100%; }
-
     /* ── Source Modal ── */
     .modal-overlay {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -378,14 +364,6 @@
   <!-- ── PRE vs POST 2014 Comparison ── -->
   <div class="compare-panel" id="compare-panel"></div>
 
-  <!-- ── Radar Chart ── -->
-  <div class="radar-wrap" id="radar-wrap" style="display:none">
-    <div class="radar-header">
-      <div class="radar-title">ERA COMPARISON — ACCOUNTABILITY INDEX</div>
-      <div class="radar-sub">UPA era vs NDA era across six accountability dimensions</div>
-    </div>
-    <div class="radar-body"><canvas id="radar-canvas" height="320"></canvas></div>
-  </div>
 
   <!-- count + AI badge row -->
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
@@ -434,12 +412,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ── Dataset — loaded from API ─────────────────────────────────────────────────
 let CASES = [];
-let _radarChart = null;
-
 async function loadCases() {
   const grid = document.getElementById('cards-grid');
   grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
@@ -455,7 +430,6 @@ async function loadCases() {
       document.getElementById('auto-badge').style.display = 'inline-flex';
     }
     render();
-    renderRadar();
   } catch(e) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Failed to load cases. Please refresh.</p></div>`;
   }
@@ -622,96 +596,6 @@ function render() {
   </div>
 </div>`;
   }).join('');
-}
-
-// ── Radar Chart ──────────────────────────────────────────────────────────────
-function renderRadar() {
-  if (!CASES.length) return;
-
-  const DIMS = [
-    { key: 'corruption',   label: 'Corruption' },
-    { key: 'resource',     label: 'Resource Scams' },
-    { key: 'financial',    label: 'Financial Crime' },
-    { key: 'defence',      label: 'Defence' },
-    { key: 'terrorism',    label: 'Terror Attacks' },
-    { key: 'transparency', label: 'Transparency' },
-  ];
-
-  // Score per era per dimension: weighted count (loss weight for monetary, casualty proxy for terror)
-  function eraScore(eraCases, dimKey) {
-    const items = eraCases.filter(c => c.category === dimKey);
-    if (!items.length) return 0;
-    if (dimKey === 'terrorism') {
-      // score by number of attacks (each attack = 10pts, capped at 100)
-      return Math.min(100, items.length * 12);
-    }
-    // score by total loss_crore (log-scaled to 0-100)
-    const total = items.reduce((s, c) => s + (c.loss_crore || 0), 0);
-    if (!total) return items.length * 10; // non-monetary: count-based
-    return Math.min(100, Math.round(Math.log10(total + 1) * 20));
-  }
-
-  const pre  = CASES.filter(c => c.era === 'pre');
-  const post = CASES.filter(c => c.era === 'post');
-  const preScores  = DIMS.map(d => eraScore(pre,  d.key));
-  const postScores = DIMS.map(d => eraScore(post, d.key));
-
-  const canvas = document.getElementById('radar-canvas');
-  if (_radarChart) { _radarChart.destroy(); _radarChart = null; }
-
-  _radarChart = new Chart(canvas, {
-    type: 'radar',
-    data: {
-      labels: DIMS.map(d => d.label),
-      datasets: [
-        {
-          label: 'Pre-2014 (UPA era)',
-          data: preScores,
-          backgroundColor: 'rgba(245,158,11,0.15)',
-          borderColor: 'rgba(245,158,11,0.85)',
-          pointBackgroundColor: 'rgba(245,158,11,0.9)',
-          pointRadius: 4, borderWidth: 2,
-        },
-        {
-          label: 'Post-2014 (NDA era)',
-          data: postScores,
-          backgroundColor: 'rgba(59,130,246,0.12)',
-          borderColor: 'rgba(59,130,246,0.85)',
-          pointBackgroundColor: 'rgba(59,130,246,0.9)',
-          pointRadius: 4, borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        r: {
-          min: 0, max: 100, ticks: { display: false, stepSize: 20 },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-          angleLines: { color: 'rgba(255,255,255,0.08)' },
-          pointLabels: {
-            color: '#8b95a8', font: { family: "'Space Mono', monospace", size: 11 },
-          },
-        },
-      },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#8b95a8', font: { family: "'Space Mono', monospace", size: 10 }, padding: 20 },
-        },
-        tooltip: {
-          backgroundColor: '#111827', borderColor: '#1e2a3a', borderWidth: 1,
-          titleColor: '#eef2ff', bodyColor: '#8b95a8',
-          titleFont: { family: "'Space Grotesk', sans-serif" },
-          callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}/100`,
-          },
-        },
-      },
-    },
-  });
-
-  document.getElementById('radar-wrap').style.display = 'block';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
