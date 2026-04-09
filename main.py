@@ -1041,14 +1041,16 @@ def _init_receipts_db():
 
 
 def _seed_receipts():
+    """UPSERT seed data so source_url / source field changes propagate to existing rows."""
     with sqlite3.connect(DB_PATH) as conn:
-        existing = {r[0] for r in conn.execute("SELECT id FROM receipts_cases")}
         for c in RECEIPTS_SEED:
-            if c["id"] not in existing:
-                conn.execute(
-                    f"INSERT INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}) VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))})",
-                    [int(c[f]) if f == "is_monetary" else c.get(f) for f in _RECEIPTS_FIELDS]
-                )
+            vals = [int(c[f]) if f == "is_monetary" else c.get(f) for f in _RECEIPTS_FIELDS]
+            conn.execute(
+                f"INSERT INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}) VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))}) "
+                f"ON CONFLICT(id) DO UPDATE SET "
+                f"{', '.join(f'{fld}=excluded.{fld}' for fld in _RECEIPTS_FIELDS if fld != 'id')}",
+                vals
+            )
         conn.commit()
 
 
