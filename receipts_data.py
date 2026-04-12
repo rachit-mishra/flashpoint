@@ -133,8 +133,8 @@ RECEIPTS_SEED = [
         "status_label": "DEAL CANCELLED", "status_class": "s-cancelled",
         "status_note": "GoI cancelled deal in 2011. Devas won $1.2 billion arbitration (UNCITRAL, 2020). SC liquidated Devas entities (2022). International asset recovery ongoing.",
         "category": "resource", "cat_label": "Resource Scam",
-        "source": "CAG Report No. 6 of 2011",
-        "source_url": "https://cag.gov.in/en/audit-report/details/34827",
+        "source": "CAG Report No. 6 of 2011 · Wikipedia",
+        "source_url": "https://en.wikipedia.org/wiki/Antrix%E2%80%93Devas_deal",
         "tweet": "📋 ANTRIX–DEVAS S-BAND DEAL (2005–2011)\n\nISRO arm gave exclusive S-band spectrum to private firm. CAG loss est: ₹2L+ Cr.\nStatus: Deal cancelled; India lost $1.2B arbitration (2020)\nSource: CAG Report No. 6 of 2011\n\n#SarkariReceipt flashpoint.watch/receipts",
     },
     {
@@ -159,8 +159,8 @@ RECEIPTS_SEED = [
         "status_label": "214 BLOCKS CANCELLED", "status_class": "s-ongoing",
         "status_note": "SC cancelled 214 coal block allocations (2014). CBI filed 26+ FIRs against companies and officials. Manmohan Singh discharged by trial court in 2024.",
         "category": "resource", "cat_label": "Resource Scam",
-        "source": "CAG Report No. 7 of 2012–13",
-        "source_url": "https://cag.gov.in/en/audit-report/details/36741",
+        "source": "CAG Report No. 7 of 2012–13 · Wikipedia",
+        "source_url": "https://en.wikipedia.org/wiki/Coalgate",
         "tweet": "📋 COALGATE (2006–2012)\n\nCAG estimated ₹1,85,591 Cr loss — coal blocks without competitive bidding.\nMinistry: Coal (PM Manmohan Singh)\nStatus: SC cancelled 214 blocks (2014); 26+ CBI FIRs\nSource: CAG Report No. 7 of 2012–13\n\n#SarkariReceipt flashpoint.watch/receipts",
     },
     {
@@ -172,8 +172,8 @@ RECEIPTS_SEED = [
         "status_label": "ACQUITTED", "status_class": "s-acquitted",
         "status_note": "Special Court acquitted all accused Dec 2017. Delhi HC upheld 2018. CBI/ED appeal pending in SC. A. Raja and Kanimozhi (DMK) were key accused.",
         "category": "resource", "cat_label": "Resource Scam",
-        "source": "CAG Report No. 19 of 2010–11",
-        "source_url": "https://cag.gov.in/en/audit-report/details/36559",
+        "source": "CAG Report No. 19 of 2010–11 · Wikipedia",
+        "source_url": "https://en.wikipedia.org/wiki/2G_spectrum_scam",
         "tweet": "📋 2G SPECTRUM SCAM (2008)\n\nCAG estimated presumptive loss: ₹1,76,645 Cr\nMinister: A. Raja (Telecom, DMK)\nStatus: Special Court acquitted all (2017); CBI/ED appeal pending in SC\nSource: CAG Report No. 19 of 2010–11\n\n#SarkariReceipt flashpoint.watch/receipts",
     },
     {
@@ -237,8 +237,8 @@ RECEIPTS_SEED = [
         "status_label": "CAG FLAGGED", "status_class": "s-pending",
         "status_note": "CAG Report No. 9 of 2013 flagged the issue. TRAI and DoT issued notices. Telcos paid some penalties. No criminal convictions.",
         "category": "resource", "cat_label": "Resource Scam",
-        "source": "CAG Report No. 9 of 2013",
-        "source_url": "https://cag.gov.in/en/audit-report/details/38051",
+        "source": "CAG Report No. 9 of 2013 · Wikipedia",
+        "source_url": "https://en.wikipedia.org/wiki/3G_spectrum_controversy_in_India",
         "tweet": "📋 3G INTRA-CIRCLE ROAMING (2012)\n\nCAG estimated ₹28,000 Cr revenue loss — telecoms in unlicensed circles.\nMinistry: Telecom (Kapil Sibal)\nStatus: CAG flagged; no criminal convictions\nSource: CAG Report No. 9 of 2013\n\n#SarkariReceipt flashpoint.watch/receipts",
     },
     {
@@ -450,7 +450,7 @@ RECEIPTS_SEED = [
         "status_note": "SC dismissed review petition Nov 2019. Justice K.M. Joseph filed dissenting note. CAG pricing comparison redacted in tabled version.",
         "category": "defence", "cat_label": "Defence",
         "source": "CAG Report No. 3 of 2019 · SC — M.L. Sharma vs Union of India (Nov 2019)",
-        "source_url": "https://cag.gov.in/en/audit-report/details/96705",
+        "source_url": "https://en.wikipedia.org/wiki/Rafale_deal_controversy",
         "tweet": "📋 RAFALE DEAL (2016)\n\n₹59,000 Cr for 36 jets. CAG: India paid 2.86% above benchmark.\nStatus: SC closed review (2019); J. Joseph dissented\nSource: CAG Report No. 3 of 2019\n\n#SarkariReceipt flashpoint.watch/receipts",
     },
     {
