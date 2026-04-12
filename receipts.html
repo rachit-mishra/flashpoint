@@ -409,7 +409,7 @@
       <div class="modal-section-label">Current Status</div>
       <div class="modal-section-body" id="modal-status"></div>
     </div>
-    <a class="modal-ext-link" id="modal-link" href="#" target="_blank" rel="noopener">View Official Document ↗</a>
+    <a class="modal-ext-link" id="modal-link" href="#" target="_blank" rel="noopener">View Source ↗</a>
   </div>
 </div>
 
@@ -477,22 +477,27 @@ function openModal(id) {
   document.getElementById('modal-source').textContent  = c.source;
   document.getElementById('modal-finding').textContent = c.loss_note;
   document.getElementById('modal-status').textContent  = c.status_note;
-  // Normalise URL — ensure protocol prefix
+  // Always show a usable source link
   const linkEl = document.getElementById('modal-link');
   let rawUrl = (c.source_url || '').trim();
   if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
     rawUrl = 'https://' + rawUrl;
   }
-  // Only show button if URL has a meaningful path beyond the root domain
-  // e.g. https://en.wikipedia.org/wiki/Foo → show  |  https://thehindu.com → hide
+  // If the URL has a real path (e.g. Wikipedia article) — link directly
+  // Otherwise fall back to a Google search for the case name on that source
   const hasPath = rawUrl && /^https?:\/\/[^/]+(\/[^/].+)/.test(rawUrl);
   if (hasPath) {
     linkEl.href = rawUrl;
-    linkEl.style.display = '';
+    linkEl.textContent = 'View Official Document ↗';
   } else {
-    linkEl.href = '#';
-    linkEl.style.display = 'none';
+    // Build a Google search: "Case Name" site:thehindu.com (or generic if no domain)
+    let domain = '';
+    try { domain = new URL(rawUrl).hostname; } catch(e) {}
+    const query = encodeURIComponent('"' + c.name + '"' + (domain ? ' site:' + domain : ' India scam corruption'));
+    linkEl.href = 'https://www.google.com/search?q=' + query;
+    linkEl.textContent = 'Search Source ↗';
   }
+  linkEl.style.display = '';
   document.getElementById('src-modal').classList.add('open');
 }
 
