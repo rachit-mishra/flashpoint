@@ -1042,21 +1042,22 @@ def _init_receipts_db():
 
 
 def _seed_receipts():
-    """UPSERT seed data so source_url / source field changes propagate to existing rows."""
+    """Wipe the receipts table and rebuild entirely from seed on every deploy.
+    All data lives in receipts_data.py — there is no user-generated content to preserve.
+    This guarantees no hallucinated/stale auto-detected rows survive across deploys.
+    """
     with sqlite3.connect(DB_PATH) as conn:
-        # Purge all AI-auto-detected cases — they had hallucinated names and bad citations
-        deleted = conn.execute("DELETE FROM receipts_cases WHERE is_auto_detected=1").rowcount
-        if deleted:
-            print(f"[Receipts] Purged {deleted} auto-detected case(s) with unverified citations")
+        conn.execute("DELETE FROM receipts_cases")
+        print("[Receipts] Cleared table — reseeding from receipts_data.py")
         for c in RECEIPTS_SEED:
             vals = [int(c[f]) if f == "is_monetary" else c.get(f) for f in _RECEIPTS_FIELDS]
             conn.execute(
-                f"INSERT INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}) VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))}) "
-                f"ON CONFLICT(id) DO UPDATE SET "
-                f"{', '.join(f'{fld}=excluded.{fld}' for fld in _RECEIPTS_FIELDS if fld != 'id')}",
+                f"INSERT INTO receipts_cases ({','.join(_RECEIPTS_FIELDS)}) VALUES ({','.join(['?']*len(_RECEIPTS_FIELDS))})",
                 vals
             )
         conn.commit()
+        print(f"[Receipts] Seeded {len(RECEIPTS_SEED)} verified cases")
+    _receipts_cache.clear()
 
 
 def _load_receipts_from_db() -> list[dict]:
