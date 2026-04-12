@@ -477,12 +477,17 @@ function openModal(id) {
   document.getElementById('modal-source').textContent  = c.source;
   document.getElementById('modal-finding').textContent = c.loss_note;
   document.getElementById('modal-status').textContent  = c.status_note;
-  // Show "View Official Document" only if source_url is a specific page (not a root domain)
+  // Normalise URL — ensure protocol prefix
   const linkEl = document.getElementById('modal-link');
-  const isSpecificUrl = c.source_url && c.source_url.length > 0 &&
-    !/^https?:\/\/[^/]+\/?$/.test(c.source_url);   // root domain = no path beyond optional /
-  if (isSpecificUrl) {
-    linkEl.href = c.source_url;
+  let rawUrl = (c.source_url || '').trim();
+  if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = 'https://' + rawUrl;
+  }
+  // Only show button if URL has a meaningful path beyond the root domain
+  // e.g. https://en.wikipedia.org/wiki/Foo → show  |  https://thehindu.com → hide
+  const hasPath = rawUrl && /^https?:\/\/[^/]+(\/[^/].+)/.test(rawUrl);
+  if (hasPath) {
+    linkEl.href = rawUrl;
     linkEl.style.display = '';
   } else {
     linkEl.href = '#';
@@ -583,7 +588,7 @@ function render() {
       : `<div class="loss-amount non-monetary">${c.loss_display}</div>`;
 
     return `
-<div class="case-card era-${c.era}">
+<div class="case-card era-${c.era}" onclick="openModal('${c.id}')" style="cursor:pointer;">
   <div class="card-top">
     <div class="card-row1">
       <span class="era-badge ${c.era_class}">${c.era_label}</span>
@@ -601,8 +606,8 @@ function render() {
     <span class="status-badge ${c.status_class}">${c.status_label}</span>
     <span class="cat-tag">${c.cat_label}</span>
     <div class="card-actions">
-      <button class="btn-src" onclick="openModal('${c.id}')">Source ↗</button>
-      <button class="btn-share" onclick='shareOnX(${JSON.stringify(c.tweet)})'>𝕏 Share</button>
+      <button class="btn-src" onclick="event.stopPropagation();openModal('${c.id}')">Source ↗</button>
+      <button class="btn-share" onclick='event.stopPropagation();shareOnX(${JSON.stringify(c.tweet)})'>𝕏 Share</button>
     </div>
   </div>
 </div>`;
