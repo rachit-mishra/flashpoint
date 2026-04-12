@@ -477,7 +477,17 @@ function openModal(id) {
   document.getElementById('modal-source').textContent  = c.source;
   document.getElementById('modal-finding').textContent = c.loss_note;
   document.getElementById('modal-status').textContent  = c.status_note;
-  document.getElementById('modal-link').href           = c.source_url;
+  // Show "View Official Document" only if source_url is a specific page (not a root domain)
+  const linkEl = document.getElementById('modal-link');
+  const isSpecificUrl = c.source_url && c.source_url.length > 0 &&
+    !/^https?:\/\/[^/]+\/?$/.test(c.source_url);   // root domain = no path beyond optional /
+  if (isSpecificUrl) {
+    linkEl.href = c.source_url;
+    linkEl.style.display = '';
+  } else {
+    linkEl.href = '#';
+    linkEl.style.display = 'none';
+  }
   document.getElementById('src-modal').classList.add('open');
 }
 

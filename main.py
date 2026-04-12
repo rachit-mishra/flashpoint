@@ -1089,7 +1089,7 @@ async def _scan_for_new_receipts():
         return
 
     articles_text = "\n\n".join(
-        f"Title: {a.get('title','')}\nSummary: {a.get('insight','')}\nSource: {a.get('source','')}"
+        f"Title: {a.get('title','')}\nSummary: {a.get('insight','')}\nSource: {a.get('source','')}\nURL: {a.get('url','')}"
         for a in recent
     )
     existing_str = "; ".join(existing_names[:30])
@@ -1112,7 +1112,10 @@ id, name, year, era (pre/post based on whether before or after 2014), era_label,
 ministry, minister, loss_crore (number, 0 if non-monetary), loss_display, is_monetary (true/false),
 loss_note (2-3 sentence factual description), status_label, status_class (s-ongoing/s-convicted/s-pending/s-acquitted/s-sc),
 status_note, category (corruption/financial/resource/defence/transparency/terrorism), cat_label,
-source, source_url, tweet (pre-formatted tweet with #SarkariReceipt flashpoint.watch/receipts)
+source (outlet name e.g. "The Hindu"), source_url (MUST be the direct article URL from the news item above — never use a homepage like thehindu.com or ndtv.com, always use the specific article URL provided),
+tweet (pre-formatted tweet with #SarkariReceipt flashpoint.watch/receipts)
+
+CRITICAL: source_url must be the full specific article URL from the news feed (e.g. https://thehindu.com/news/.../article123.ece), NOT the website homepage.
 
 Return [] if nothing new found. Return ONLY valid JSON array, no markdown."""
 
