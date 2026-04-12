@@ -966,11 +966,12 @@ async def _background_refresh():
                 )
             except Exception as exc:
                 print(f"[Flashpoint] Refresh error: {exc}")
-        # Scan news for new receipts cases after each data refresh
-        try:
-            await _scan_for_new_receipts()
-        except Exception as exc:
-            print(f"[Receipts] Scan error in loop: {exc}")
+        # Auto-scan disabled — hallucinated cases with bad citations pollute the archive
+        # Re-enable once citation verification is in place
+        # try:
+        #     await _scan_for_new_receipts()
+        # except Exception as exc:
+        #     print(f"[Receipts] Scan error in loop: {exc}")
         await asyncio.sleep(CACHE_TTL_SECONDS)
 
 
@@ -1043,6 +1044,10 @@ def _init_receipts_db():
 def _seed_receipts():
     """UPSERT seed data so source_url / source field changes propagate to existing rows."""
     with sqlite3.connect(DB_PATH) as conn:
+        # Purge all AI-auto-detected cases — they had hallucinated names and bad citations
+        deleted = conn.execute("DELETE FROM receipts_cases WHERE is_auto_detected=1").rowcount
+        if deleted:
+            print(f"[Receipts] Purged {deleted} auto-detected case(s) with unverified citations")
         for c in RECEIPTS_SEED:
             vals = [int(c[f]) if f == "is_monetary" else c.get(f) for f in _RECEIPTS_FIELDS]
             conn.execute(
