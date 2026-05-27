@@ -45,6 +45,9 @@ _previous_tension: Optional[int] = None
 _cache_lock            = asyncio.Lock()
 CACHE_TTL_SECONDS      = 21600  # 6 hours (4 refreshes/day)
 
+# ── Pramaana credibility cache (URL md5 → result) ───────────────────────────
+_pramaana_cache: dict = {}
+
 # ── Weight tables ──────────────────────────────────────────────────────────────
 CATEGORY_WEIGHTS = {
     "Nuclear": 2.0, "Conflict": 1.5, "Terrorism": 1.5,
@@ -1568,6 +1571,71 @@ async def get_country_intel(name: str):
         "summary":            summary,
         "articles":           matching[:10],
     })
+
+
+# ── Pramaana — article credibility analysis ─────────────────────────────────
+
+_PRAMAANA_SYSTEM_PROMPT = """You are Pramaana, an expert media credibility analyst specializing in South Asian and global geopolitical news. You analyze articles with deep knowledge of Indian, Pakistani, Bangladeshi, Chinese, and Western media ecosystems — their ownership structures, political alignments, funding sources, and narrative patterns.
+
+You return ONLY a valid JSON object — no markdown, no preamble, no explanation outside the JSON. The JSON must exactly match this schema:
+{
+  "article_title": "string",
+  "source_url": "string",
+  "overall_score": number (0-100),
+  "verdict": "string — 2-3 sentences, sharp and editorial",
+  "dimensions": [
+    { "name": "Source trust", "score": number, "note": "max 8 words" },
+    { "name": "Claim verifiability", "score": number, "note": "max 8 words" },
+    { "name": "Cross-source consensus", "score": number, "note": "max 8 words" },
+    { "name": "Narrative transparency", "score": number, "note": "max 8 words" },
+    { "name": "Contextual completeness", "score": number, "note": "max 8 words" }
+  ],
+  "source_funding": "string — 2-3 sentences",
+  "claims": [{ "type": "fact|opinion|contested|unverifiable", "text": "string" }],
+  "cross_source": [{ "outlet": "string", "stance": "agree|partial|diverge|silent", "note": "string" }],
+  "narrative_beneficiary": "string — 2 sentences, name specific actors",
+  "missing_context": ["string", "string", "string"]
+}
+Rules: exactly 4 claims, 4 cross_source entries, 3 missing_context items. Score 70-100 credible, 40-69 mixed, 0-39 low."""
+
+
+def _pramaana_call(url: str, api_key: str) -> dict:
+    import anthropic as _ant, json as _json
+    client  = _ant.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2500,
+        system=_PRAMAANA_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": (
+            f"Analyze credibility of: {url}\n"
+            "Analyze based on outlet ownership, funding, editorial history, "
+            "coverage patterns, and cross-source comparison. Return JSON only."
+        )}],
+    )
+    raw = message.content[0].text
+    return _json.loads(raw[raw.find("{"):raw.rfind("}")+1])
+
+
+class PramaanaRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/pramaana/analyze")
+async def pramaana_analyze(req: PramaanaRequest):
+    import hashlib
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(400, "url is required")
+    cache_key = hashlib.md5(url.encode()).hexdigest()
+    if cache_key in _pramaana_cache:
+        return JSONResponse(_pramaana_cache[cache_key])
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise HTTPException(500, "ANTHROPIC_API_KEY not configured")
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _pramaana_call, url, api_key)
+    _pramaana_cache[cache_key] = result
+    return JSONResponse(result)
 
 
 @app.get("/api/alerts/unsubscribe")
