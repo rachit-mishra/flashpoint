@@ -22,6 +22,7 @@ from analyzer import analyze_batch, generate_situation_report, generate_country_
 from fetcher import get_all_news
 from sarvam import translate_to_hindi, text_to_speech
 from receipts_data import RECEIPTS_SEED
+from pramaana_data import PRAMAANA_SEED
 
 load_dotenv()
 
@@ -1618,6 +1619,18 @@ def _pramaana_call(url: str, api_key: str) -> dict:
 
 class PramaanaRequest(BaseModel):
     url: str
+
+
+@app.get("/pramaana", response_class=HTMLResponse)
+async def serve_pramaana():
+    return HTMLResponse(
+        content=(BASE_DIR / "pramaana.html").read_text(encoding="utf-8"), status_code=200
+    )
+
+
+@app.get("/api/pramaana/showcase")
+async def pramaana_showcase():
+    return JSONResponse(PRAMAANA_SEED)
 
 
 @app.post("/api/pramaana/analyze")
