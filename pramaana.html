@@ -204,6 +204,27 @@
 
     /* ── Error state ─────────────────────────────────────────────────────── */
     .error-box { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--r-sm); padding: 16px; font-size: 13px; color: #ef4444; text-align: center; }
+
+    /* ── Share buttons ───────────────────────────────────────────────────── */
+    .share-row { display: flex; justify-content: flex-end; padding-top: 4px; }
+    .share-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-3); font-family: var(--font-m); font-size: 9px;
+      letter-spacing: 0.1em; text-transform: uppercase; padding: 7px 14px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .share-btn:hover { border-color: rgba(59,130,246,0.45); color: #3b82f6; background: rgba(59,130,246,0.07); }
+    .sc-footer { display: flex; justify-content: flex-end; margin-top: 2px; }
+    .sc-share-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: transparent; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-3); font-family: var(--font-m); font-size: 8px;
+      letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px;
+      cursor: pointer; transition: all 0.15s; opacity: 0;
+    }
+    .sc-card:hover .sc-share-btn { opacity: 0.7; }
+    .sc-share-btn:hover { opacity: 1 !important; border-color: rgba(59,130,246,0.45); color: #3b82f6; background: rgba(59,130,246,0.07); }
   </style>
 </head>
 <body>
@@ -398,6 +419,12 @@ function renderResults(data, isLoading = false) {
         ${(data.missing_context || []).map(m => `<div class="missing-item">${m}</div>`).join('')}
       </div>
     </div>
+    ${data.share_id ? `<div class="share-row">
+      <button class="share-btn" onclick="copyShareLink('${data.share_id}', this)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Copy share link
+      </button>
+    </div>` : ''}
   </div>`;
 
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -411,6 +438,17 @@ function renderError(msg) {
 
 function extractOutlet(url) {
   try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
+}
+
+// ── Share helpers ─────────────────────────────────────────────────────────
+function copyShareLink(shareId, btn) {
+  const url = window.location.origin + '/pramaana?id=' + shareId;
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.innerHTML;
+    btn.textContent = 'Copied!';
+    btn.style.color = '#22c55e';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+  }).catch(() => { prompt('Copy this link:', url); });
 }
 
 // ── Analyzer ──────────────────────────────────────────────────────────────
@@ -432,6 +470,7 @@ async function analyze(url) {
     if (data.error) throw new Error(data.error);
     _cache[url] = data;
     renderResults(data);
+    if (data.share_id) history.pushState({}, '', '/pramaana?id=' + data.share_id);
     // Deselect any active showcase card
     document.querySelectorAll('.sc-card.active').forEach(c => c.classList.remove('active'));
   } catch(err) {
@@ -471,7 +510,13 @@ function buildShowcaseCard(d, idx) {
     </div>
     <div class="sc-title">${d.article_title}</div>
     <div class="sc-verdict">${d.verdict}</div>
-    <div class="sc-dims">${dims}</div>`;
+    <div class="sc-dims">${dims}</div>
+    ${d.share_id ? `<div class="sc-footer">
+      <button class="sc-share-btn" title="Copy share link">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share
+      </button>
+    </div>` : ''}`;
 
   card.addEventListener('click', () => {
     if (_activeCard) _activeCard.classList.remove('active');
@@ -480,7 +525,19 @@ function buildShowcaseCard(d, idx) {
     document.getElementById('url-input').value = d.source_url || '';
     _cache[d.source_url] = d;
     renderResults(d);
+    if (d.share_id) history.pushState({}, '', '/pramaana?id=' + d.share_id);
   });
+
+  if (d.share_id) {
+    const shareBtn = card.querySelector('.sc-share-btn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyShareLink(d.share_id, shareBtn);
+      });
+    }
+  }
+
   return card;
 }
 
@@ -525,6 +582,24 @@ fetch('/api/pramaana/showcase')
   if (btn) btn.addEventListener('click', () => {
     applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
   });
+})();
+
+// ── Load shared result on page load ──────────────────────────────────────
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+  if (!id) return;
+  renderResults(null, true);
+  fetch('/api/pramaana/result/' + id)
+    .then(r => { if (!r.ok) throw new Error('not found'); return r.json(); })
+    .then(data => {
+      if (data.source_url) {
+        document.getElementById('url-input').value = data.source_url;
+        _cache[data.source_url] = data;
+      }
+      renderResults(data);
+    })
+    .catch(() => renderError('Shared analysis not found. The link may be incorrect.'));
 })();
 </script>
 </body>

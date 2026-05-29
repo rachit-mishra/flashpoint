@@ -307,11 +307,50 @@ def init_db() -> None:
                 last_alerted TEXT,
                 created_at   TEXT    NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS pramaana_results (
+                share_id   TEXT PRIMARY KEY,
+                url        TEXT NOT NULL,
+                result     TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
         """)
         try:
             c.execute("ALTER TABLE readings ADD COLUMN regional_json TEXT DEFAULT '{}'")
         except Exception:
             pass   # column already exists on existing DBs
+        c.commit()
+
+
+def save_pramaana_result(share_id: str, url: str, result: dict) -> None:
+    import json as _json
+    with sqlite3.connect(DB_PATH) as c:
+        c.execute(
+            "INSERT OR REPLACE INTO pramaana_results (share_id, url, result, created_at) VALUES (?,?,?,?)",
+            (share_id, url, _json.dumps(result), datetime.now(timezone.utc).isoformat()),
+        )
+        c.commit()
+
+
+def get_pramaana_result(share_id: str) -> dict | None:
+    import json as _json
+    with sqlite3.connect(DB_PATH) as c:
+        row = c.execute(
+            "SELECT result FROM pramaana_results WHERE share_id=?", (share_id,)
+        ).fetchone()
+    return _json.loads(row[0]) if row else None
+
+
+def _seed_pramaana_results() -> None:
+    """Pre-populate DB with showcase articles so seed cards are also shareable."""
+    import hashlib, json as _json
+    with sqlite3.connect(DB_PATH) as c:
+        for item in PRAMAANA_SEED:
+            url      = item.get("source_url", "")
+            share_id = hashlib.md5(url.encode()).hexdigest()
+            c.execute(
+                "INSERT OR IGNORE INTO pramaana_results (share_id, url, result, created_at) VALUES (?,?,?,?)",
+                (share_id, url, _json.dumps(item), datetime.now(timezone.utc).isoformat()),
+            )
         c.commit()
 
 
@@ -1010,6 +1049,7 @@ async def _daily_digest_loop():
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    _seed_pramaana_results()
     asyncio.create_task(_background_refresh())
     asyncio.create_task(_daily_digest_loop())
 
@@ -1630,25 +1670,53 @@ async def serve_pramaana():
 
 @app.get("/api/pramaana/showcase")
 async def pramaana_showcase():
-    return JSONResponse(PRAMAANA_SEED)
+    import hashlib
+    items = []
+    for item in PRAMAANA_SEED:
+        share_id = hashlib.md5(item.get("source_url", "").encode()).hexdigest()
+        items.append({**item, "share_id": share_id})
+    return JSONResponse(items)
+
+
+@app.get("/api/pramaana/result/{share_id}")
+async def pramaana_get_result(share_id: str):
+    if share_id in _pramaana_cache:
+        return JSONResponse({**_pramaana_cache[share_id], "share_id": share_id})
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, get_pramaana_result, share_id)
+    if not result:
+        raise HTTPException(404, "Result not found")
+    _pramaana_cache[share_id] = result
+    return JSONResponse({**result, "share_id": share_id})
 
 
 @app.post("/api/pramaana/analyze")
 async def pramaana_analyze(req: PramaanaRequest):
     import hashlib
-    url = req.url.strip()
+    url      = req.url.strip()
     if not url:
         raise HTTPException(400, "url is required")
-    cache_key = hashlib.md5(url.encode()).hexdigest()
-    if cache_key in _pramaana_cache:
-        return JSONResponse(_pramaana_cache[cache_key])
+    share_id = hashlib.md5(url.encode()).hexdigest()
+
+    # 1. In-memory cache
+    if share_id in _pramaana_cache:
+        return JSONResponse({**_pramaana_cache[share_id], "share_id": share_id})
+
+    # 2. Persistent DB (survives restarts, shared across users)
+    loop   = asyncio.get_event_loop()
+    stored = await loop.run_in_executor(None, get_pramaana_result, share_id)
+    if stored:
+        _pramaana_cache[share_id] = stored
+        return JSONResponse({**stored, "share_id": share_id})
+
+    # 3. Run fresh analysis
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         raise HTTPException(500, "ANTHROPIC_API_KEY not configured")
-    loop   = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, _pramaana_call, url, api_key)
-    _pramaana_cache[cache_key] = result
-    return JSONResponse(result)
+    _pramaana_cache[share_id] = result
+    await loop.run_in_executor(None, save_pramaana_result, share_id, url, result)
+    return JSONResponse({**result, "share_id": share_id})
 
 
 @app.get("/api/alerts/unsubscribe")
