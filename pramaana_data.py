@@ -162,7 +162,7 @@ PRAMAANA_SEED = [
         ],
         "narrative_beneficiary": "The Pakistani military establishment and government benefit from a framing that repositions Pakistan as victim of Indian aggression rather than host to terrorist infrastructure. The WEF-affiliated author branding is strategic — it is designed to reach international audiences and build pressure for condemnation of India, bypassing the question of why the Pahalgam attack occurred.",
         "missing_context": [
-            "The Pahalgam terror attack of April 22, 2025 killed 26 Indian civilians — the direct trigger for Operation Sindoor — is never mentioned anywhere in the piece",
+            "The Pahalgam terror attack of April 22, 2025 killed 26 Indian civilians — the direct trigger for Operation Sindoor. The piece mentions Pahalgam only once, solely to dispute Pakistan's link to it, with no acknowledgment of the victims or the attack itself",
             "India named nine specific strike sites as headquarters of Lashkar-e-Taiba and Jaish-e-Mohammed; the article does not engage with whether these sites housed terror infrastructure",
             "UN-designated terrorist organisations LeT and JeM have operated openly from Pakistan for decades with documented state tolerance — context entirely absent",
         ],
