@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Pramaana — Credibility Check",
+  "short_name": "Pramaana",
+  "description": "Instant credibility analysis for any news article. Powered by FLASHPOINT.",
+  "version": "1.0.0",
+  "permissions": ["activeTab", "tabs", "clipboardWrite"],
+  "host_permissions": [
+    "https://flashpoint.watch/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Pramaana — Check article credibility"
+  }
+}

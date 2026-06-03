@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pramaana</title>
+  <style>
+    :root {
+      --bg: #080c14; --surface: #0d1220; --surface-2: #111827;
+      --border: rgba(255,255,255,0.06); --border-h: rgba(255,255,255,0.11);
+      --text-1: #eef2ff; --text-2: #8b95a8; --text-3: #4b5563;
+      --red: #ef4444; --green: #22c55e; --amber: #f59e0b; --blue: #3b82f6;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px; max-height: 580px; overflow-y: auto;
+      background: var(--bg); color: var(--text-1);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-size: 13px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+
+    /* ── Header ── */
+    .header {
+      display: flex; align-items: center; gap: 9px;
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg); z-index: 10;
+    }
+    .logo-mark {
+      width: 24px; height: 24px; flex-shrink: 0;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 13px; height: 13px; }
+    .header-name {
+      font-family: 'Courier New', monospace; font-size: 11px;
+      font-weight: 700; letter-spacing: 0.14em; color: var(--text-1);
+    }
+    .header-sub {
+      font-family: 'Courier New', monospace; font-size: 7px;
+      color: var(--text-3); letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .header-by {
+      margin-left: auto; font-family: 'Courier New', monospace; font-size: 7px;
+      color: var(--text-3); letter-spacing: 0.14em; text-transform: uppercase;
+    }
+
+    /* ── State container ── */
+    #state { padding: 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Loading ── */
+    .loading-bar {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ef4444, transparent);
+      background-size: 200% 100%; animation: shimmer 1.2s linear infinite; border-radius: 2px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .loading-text {
+      text-align: center; font-family: 'Courier New', monospace;
+      font-size: 10px; color: var(--text-3); letter-spacing: 0.1em;
+      padding: 18px 0 6px;
+    }
+
+    /* ── Error ── */
+    .error-box {
+      background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px; padding: 12px; font-size: 12px; color: var(--red); text-align: center;
+    }
+
+    /* ── Score row ── */
+    .score-row { display: flex; align-items: center; gap: 14px; }
+    .score-num {
+      font-family: 'Courier New', monospace; font-size: 56px; font-weight: 700;
+      line-height: 1; letter-spacing: -0.03em;
+    }
+    .score-right { display: flex; flex-direction: column; gap: 6px; }
+    .score-lbl {
+      font-family: 'Courier New', monospace; font-size: 8px; letter-spacing: 0.18em;
+      text-transform: uppercase; padding: 3px 10px; border-radius: 999px; display: inline-block;
+    }
+
+    /* ── Meta ── */
+    .outlet {
+      font-family: 'Courier New', monospace; font-size: 8px;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3);
+    }
+    .art-title { font-size: 12px; font-weight: 600; color: var(--text-1); line-height: 1.4; }
+    .verdict {
+      font-size: 11px; color: var(--text-2); line-height: 1.75;
+      border-top: 1px solid var(--border); padding-top: 10px;
+      display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── Dimension bars ── */
+    .dims-section { border-top: 1px solid var(--border); padding-top: 10px; }
+    .sec-label {
+      font-family: 'Courier New', monospace; font-size: 7px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--text-3); margin-bottom: 8px;
+    }
+    .dims { display: flex; flex-direction: column; gap: 7px; }
+    .dim-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .dim-name { font-size: 11px; color: var(--text-2); }
+    .dim-score { font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; }
+    .dim-bar-bg { height: 2px; background: #1a2235; border-radius: 2px; overflow: hidden; }
+    .dim-bar { height: 100%; border-radius: 2px; }
+
+    /* ── Funding ── */
+    .funding-section { border-top: 1px solid var(--border); padding-top: 10px; }
+    .funding-text { font-size: 11px; color: var(--text-2); line-height: 1.7; }
+
+    /* ── Actions ── */
+    .actions {
+      display: flex; gap: 8px; padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-view {
+      flex: 1; display: block; text-align: center;
+      background: var(--red); color: #fff; border: none; border-radius: 7px;
+      padding: 9px 12px; font-family: 'Courier New', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-view:hover { background: #dc2626; }
+    .btn-copy {
+      background: transparent; border: 1px solid var(--border); border-radius: 7px;
+      color: var(--text-3); font-family: 'Courier New', monospace; font-size: 8px;
+      letter-spacing: 0.1em; text-transform: uppercase; padding: 9px 12px;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-copy:hover { border-color: rgba(59,130,246,0.4); color: var(--blue); background: rgba(59,130,246,0.06); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-mark">
+    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="6.5" stroke="white" stroke-width="1.6"/>
+      <circle cx="11" cy="11" r="2.2" fill="white"/>
+      <line x1="11" y1="2"  x2="11" y2="5.5" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="11" y1="16.5" x2="11" y2="20" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="2"  y1="11" x2="5.5" y2="11" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="16.5" y1="11" x2="20" y2="11" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div>
+    <div class="header-name">PRAMAANA</div>
+    <div class="header-sub">Credibility Intelligence</div>
+  </div>
+  <div class="header-by">by Flashpoint</div>
+</div>
+
+<div id="state">
+  <div class="loading-bar"></div>
+  <div class="loading-text">Reading page…</div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
