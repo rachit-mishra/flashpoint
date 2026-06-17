@@ -13,7 +13,7 @@ from typing import Optional
 
 import requests as http_req
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
@@ -313,6 +313,12 @@ def init_db() -> None:
                 result     TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS pramaana_usage (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip         TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_pramaana_usage_created ON pramaana_usage(created_at);
         """)
         try:
             c.execute("ALTER TABLE readings ADD COLUMN regional_json TEXT DEFAULT '{}'")
@@ -338,6 +344,41 @@ def get_pramaana_result(share_id: str) -> dict | None:
             "SELECT result FROM pramaana_results WHERE share_id=?", (share_id,)
         ).fetchone()
     return _json.loads(row[0]) if row else None
+
+
+# ── Pramaana rate limiting (protects Anthropic API spend) ──────────────────
+PRAMAANA_IP_LIMIT     = int(os.getenv("PRAMAANA_IP_LIMIT", "5"))      # fresh analyses / IP / 24h
+PRAMAANA_GLOBAL_LIMIT = int(os.getenv("PRAMAANA_GLOBAL_LIMIT", "100"))  # fresh analyses total / 24h
+
+
+def _pramaana_check_limits(ip: str) -> tuple[bool, str]:
+    """Gate FRESH (uncached) analyses only. Returns (allowed, message)."""
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    with sqlite3.connect(DB_PATH) as c:
+        global_count = c.execute(
+            "SELECT COUNT(*) FROM pramaana_usage WHERE created_at > ?", (cutoff,)
+        ).fetchone()[0]
+        if global_count >= PRAMAANA_GLOBAL_LIMIT:
+            return False, ("Pramaana is at daily capacity right now. Browsing pre-analyzed "
+                           "articles is always free — fresh analysis reopens within 24 hours.")
+        ip_count = c.execute(
+            "SELECT COUNT(*) FROM pramaana_usage WHERE ip=? AND created_at > ?", (ip, cutoff)
+        ).fetchone()[0]
+        if ip_count >= PRAMAANA_IP_LIMIT:
+            return False, (f"You've used your {PRAMAANA_IP_LIMIT} free analyses for today. "
+                           "Pre-analyzed articles and shared links stay free — new analysis "
+                           "reopens in 24 hours.")
+    return True, ""
+
+
+def _pramaana_record_usage(ip: str) -> None:
+    with sqlite3.connect(DB_PATH) as c:
+        c.execute(
+            "INSERT INTO pramaana_usage (ip, created_at) VALUES (?,?)",
+            (ip, datetime.now(timezone.utc).isoformat()),
+        )
+        c.commit()
 
 
 def _seed_pramaana_results() -> None:
@@ -1691,31 +1732,39 @@ async def pramaana_get_result(share_id: str):
 
 
 @app.post("/api/pramaana/analyze")
-async def pramaana_analyze(req: PramaanaRequest):
+async def pramaana_analyze(req: PramaanaRequest, request: Request):
     import hashlib
     url      = req.url.strip()
     if not url:
         raise HTTPException(400, "url is required")
     share_id = hashlib.md5(url.encode()).hexdigest()
 
-    # 1. In-memory cache
+    # 1. In-memory cache (free, unlimited)
     if share_id in _pramaana_cache:
         return JSONResponse({**_pramaana_cache[share_id], "share_id": share_id})
 
-    # 2. Persistent DB (survives restarts, shared across users)
+    # 2. Persistent DB (free, unlimited — survives restarts, shared across users)
     loop   = asyncio.get_event_loop()
     stored = await loop.run_in_executor(None, get_pramaana_result, share_id)
     if stored:
         _pramaana_cache[share_id] = stored
         return JSONResponse({**stored, "share_id": share_id})
 
-    # 3. Run fresh analysis
+    # 3. Fresh analysis — rate limited to protect API spend.
+    #    Real client IP comes from X-Forwarded-For behind Railway's proxy.
+    ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+          or (request.client.host if request.client else "unknown"))
+    allowed, msg = await loop.run_in_executor(None, _pramaana_check_limits, ip)
+    if not allowed:
+        raise HTTPException(429, msg)
+
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         raise HTTPException(500, "ANTHROPIC_API_KEY not configured")
     result = await loop.run_in_executor(None, _pramaana_call, url, api_key)
     _pramaana_cache[share_id] = result
     await loop.run_in_executor(None, save_pramaana_result, share_id, url, result)
+    await loop.run_in_executor(None, _pramaana_record_usage, ip)
     return JSONResponse({**result, "share_id": share_id})
 
 

@@ -465,7 +465,11 @@ async function analyze(url) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
-    if (!r.ok) throw new Error(`Server error ${r.status}`);
+    if (!r.ok) {
+      let msg = `Server error ${r.status}`;
+      try { const e = await r.json(); if (e.detail) msg = e.detail; } catch {}
+      throw new Error(msg);
+    }
     const data = await r.json();
     if (data.error) throw new Error(data.error);
     _cache[url] = data;
