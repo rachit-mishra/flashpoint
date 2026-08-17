@@ -205,6 +205,29 @@
     /* ── Error state ─────────────────────────────────────────────────────── */
     .error-box { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--r-sm); padding: 16px; font-size: 13px; color: #ef4444; text-align: center; }
 
+    /* ── Outlet leaderboard ──────────────────────────────────────────────── */
+    .leaderboard { margin-bottom: 56px; }
+    .leaderboard-header { margin-bottom: 20px; }
+    .leaderboard-title { font-family: var(--font-d); font-size: 18px; font-weight: 600; }
+    .leaderboard-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+    .lb-table { display: flex; flex-direction: column; gap: 6px; }
+    .lb-row {
+      display: grid; grid-template-columns: 28px 1fr auto auto;
+      align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 12px 16px;
+      transition: border-color 0.15s;
+    }
+    .lb-row:hover { border-color: var(--border-hover); }
+    .lb-rank { font-family: var(--font-m); font-size: 10px; color: var(--text-3); text-align: center; }
+    .lb-outlet { font-size: 13px; font-weight: 500; color: var(--text-1); }
+    .lb-articles { font-family: var(--font-m); font-size: 9px; color: var(--text-3);
+      background: var(--surface-3); border: 1px solid var(--border);
+      border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+    .lb-score { font-family: var(--font-m); font-size: 15px; font-weight: 700; text-align: right; min-width: 36px; }
+    .lb-bar-wrap { grid-column: 1 / -1; height: 2px; background: var(--surface-3); border-radius: 2px; margin-top: -4px; }
+    .lb-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
     /* ── Share buttons ───────────────────────────────────────────────────── */
     .share-row { display: flex; justify-content: flex-end; padding-top: 4px; }
     .share-btn {
@@ -289,6 +312,15 @@
 
   <!-- Results -->
   <div id="results"></div>
+
+  <!-- Outlet Leaderboard -->
+  <div class="leaderboard" id="leaderboard-section">
+    <div class="leaderboard-header">
+      <div class="leaderboard-title">Outlet Credibility Index</div>
+      <div class="leaderboard-sub">Average score across all analyzed articles · updated live as dataset grows</div>
+    </div>
+    <div class="lb-table" id="lb-table"></div>
+  </div>
 
   <!-- Showcase -->
   <div id="showcase-section">
@@ -573,6 +605,28 @@ fetch('/api/pramaana/showcase')
     renderShowcase('all');
   })
   .catch(() => {});
+
+// ── Outlet Leaderboard ───────────────────────────────────────────────────
+fetch('/api/pramaana/leaderboard')
+  .then(r => r.json())
+  .then(data => {
+    const table = document.getElementById('lb-table');
+    if (!data.length) { table.parentElement.style.display = 'none'; return; }
+    table.innerHTML = data.map((d, i) => {
+      const clr = scoreColor(d.avg_score);
+      const pct = d.avg_score;
+      return `<div class="lb-row">
+        <div class="lb-rank">${i + 1}</div>
+        <div class="lb-outlet">${d.outlet}</div>
+        <div class="lb-articles">${d.articles} article${d.articles !== 1 ? 's' : ''}</div>
+        <div class="lb-score" style="color:${clr};">${d.avg_score}</div>
+        <div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%;background:${clr};"></div></div>
+      </div>`;
+    }).join('');
+  })
+  .catch(() => {
+    document.getElementById('leaderboard-section').style.display = 'none';
+  });
 
 // ── Theme toggle ──────────────────────────────────────────────────────────
 (function() {

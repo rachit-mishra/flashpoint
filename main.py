@@ -1731,6 +1731,39 @@ async def pramaana_get_result(share_id: str):
     return JSONResponse({**result, "share_id": share_id})
 
 
+@app.get("/api/pramaana/leaderboard")
+async def pramaana_leaderboard():
+    import json as _json
+    loop = asyncio.get_event_loop()
+    def _fetch():
+        with sqlite3.connect(DB_PATH) as c:
+            rows = c.execute("SELECT result FROM pramaana_results").fetchall()
+        outlet_map: dict = {}
+        for row in rows:
+            try:
+                r = _json.loads(row[0])
+            except Exception:
+                continue
+            outlet = r.get("outlet") or "Unknown"
+            score  = r.get("overall_score")
+            if not isinstance(score, (int, float)):
+                continue
+            if outlet not in outlet_map:
+                outlet_map[outlet] = []
+            outlet_map[outlet].append(int(score))
+        result = []
+        for outlet, scores in outlet_map.items():
+            result.append({
+                "outlet":    outlet,
+                "avg_score": round(sum(scores) / len(scores)),
+                "articles":  len(scores),
+            })
+        result.sort(key=lambda x: x["avg_score"], reverse=True)
+        return result
+    data = await loop.run_in_executor(None, _fetch)
+    return JSONResponse(data)
+
+
 @app.post("/api/pramaana/analyze")
 async def pramaana_analyze(req: PramaanaRequest, request: Request):
     import hashlib
