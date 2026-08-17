@@ -389,7 +389,7 @@ def _seed_pramaana_results() -> None:
             url      = item.get("source_url", "")
             share_id = hashlib.md5(url.encode()).hexdigest()
             c.execute(
-                "INSERT OR IGNORE INTO pramaana_results (share_id, url, result, created_at) VALUES (?,?,?,?)",
+                "INSERT OR REPLACE INTO pramaana_results (share_id, url, result, created_at) VALUES (?,?,?,?)",
                 (share_id, url, _json.dumps(item), datetime.now(timezone.utc).isoformat()),
             )
         c.commit()
@@ -1744,8 +1744,13 @@ async def pramaana_leaderboard():
                 r = _json.loads(row[0])
             except Exception:
                 continue
-            outlet = r.get("outlet") or "Unknown"
+            outlet = (r.get("outlet") or "").strip()
             score  = r.get("overall_score")
+            region = r.get("region", "")
+            if not outlet or outlet.lower() == "unknown":
+                continue
+            if region != "india":
+                continue
             if not isinstance(score, (int, float)):
                 continue
             if outlet not in outlet_map:

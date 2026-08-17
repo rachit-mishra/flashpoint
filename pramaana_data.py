@@ -4,6 +4,7 @@ PRAMAANA_SEED = [
         "article_title": "Operation Sindoor and the Evolution of India's Military Strategy Against Pakistan",
         "source_url": "https://warontherocks.com/2025/05/operation-sindoor-and-the-evolution-of-indias-strategy-against-pakistan/",
         "outlet": "War on the Rocks",
+        "region": "india",
         "overall_score": 74,
         "verdict": "War on the Rocks is a peer-reviewed defence policy outlet with strong editorial standards. This piece by Arzan Tarapore traces India's strategic evolution across Uri, Balakot, and Operation Sindoor with credible sourcing and analytical restraint. The framing is Western-security-establishment adjacent, which slightly underweights Pakistani and civilian perspectives, but the core analysis is rigorously argued.",
         "dimensions": [
@@ -39,6 +40,7 @@ PRAMAANA_SEED = [
         "article_title": "Biden says Israel has agreed to 'enduring' Gaza ceasefire proposal",
         "source_url": "https://www.aljazeera.com/news/2024/5/31/biden-says-israel-has-agreed-to-enduring-gaza-ceasefire-proposal",
         "outlet": "Al Jazeera",
+        "region": "global",
         "overall_score": 61,
         "verdict": "Al Jazeera's coverage of Biden's ceasefire proposal is factually grounded and fills a genuine reporting gap. The piece accurately reports the three-phase proposal and Hamas's response. However, Israeli government counter-framing receives less depth than Palestinian reaction, and the headline's framing of Israel having 'agreed' was contested within hours — a nuance the article addresses only partially.",
         "dimensions": [
@@ -72,6 +74,7 @@ PRAMAANA_SEED = [
         "article_title": "Another India-US Defence Agreement, Same Old Obstacles",
         "source_url": "https://thewire.in/article/security/another-india-us-defence-agreement-same-old-obstacles",
         "outlet": "The Wire",
+        "region": "india",
         "overall_score": 57,
         "verdict": "Rahul Bedi's analysis documents a genuine pattern of underdelivery in India-US defence co-development, with verifiable references to failed programmes like DTTI and iCET. The core thesis is supported by evidence. However, the piece curates expert opinion toward scepticism and omits significant counterevidence — actual technology transfers and joint production that have occurred — creating an imbalanced picture that serves a pre-formed conclusion.",
         "dimensions": [
@@ -105,6 +108,7 @@ PRAMAANA_SEED = [
         "article_title": "Dealing with the Taliban",
         "source_url": "https://www.dawn.com/news/1884874",
         "outlet": "Dawn",
+        "region": "india",
         "overall_score": 54,
         "verdict": "Maleeha Lodhi, a former Pakistani ambassador, provides a sophisticated insider account of Pakistan's Taliban dilemma that is analytically stronger than typical government-aligned commentary. She acknowledges the TTP threat honestly. However, the piece consistently frames Pakistan as reacting to circumstances rather than examining Islamabad's historical role in creating them, and avoids the structural question of ISI's relationship with the Afghan Taliban.",
         "dimensions": [
@@ -138,6 +142,7 @@ PRAMAANA_SEED = [
         "article_title": "Operation Sindoor: The War on Civilians",
         "source_url": "https://www.geo.tv/latest/623772-operation-sindoor-the-war-on-civilians",
         "outlet": "Geo TV",
+        "region": "india",
         "overall_score": 31,
         "verdict": "Amir Jahangir's piece in Geo TV frames Operation Sindoor entirely through Pakistani civilian casualties, without once mentioning the Pahalgam terror attack that killed 26 Indian civilians and triggered the operation. The author's WEF Country Partner Institute affiliation is foregrounded to project international legitimacy, but the piece is structurally a Pakistani government-adjacent narrative — it presents unverified casualty figures as established fact, attributes deliberate targeting of civilians without evidentiary basis, and omits all context about the terror infrastructure India stated it struck.",
         "dimensions": [
@@ -173,6 +178,7 @@ PRAMAANA_SEED = [
         "article_title": "Western 'alternative' narrative detrimental to Indian infrastructure development",
         "source_url": "https://www.globaltimes.cn/page/202408/1318526.shtml",
         "outlet": "Global Times",
+        "region": "india",
         "overall_score": 22,
         "verdict": "Global Times is an official organ of the Chinese Communist Party, published under People's Daily. This piece is a textbook example of CCP foreign influence strategy: using India's legitimate infrastructure ambitions to position China as India's natural partner and Western frameworks as adversarial. The 'analyst' voices are unattributed or drawn from Chinese state-adjacent think tanks. The argument is constructed to serve Beijing's geopolitical interests, not India's.",
         "dimensions": [
@@ -206,6 +212,7 @@ PRAMAANA_SEED = [
         "article_title": "WEF 2023: U.S. sanctions obsession subverts international cooperation",
         "source_url": "https://news.cgtn.com/news/2023-01-20/WEF-2023-U-S-sanctions-obsession-subverts-international-cooperation-1gKmidSxnig/index.html",
         "outlet": "CGTN",
+        "region": "global",
         "overall_score": 20,
         "verdict": "CGTN is China's state international broadcasting network, operating under the CCP's Central Propaganda Department. This Davos-timed opinion piece uses the WEF's cooperation-themed agenda to delegitimise US sanctions policy — a core CCP foreign policy objective. The author selectively frames US sanctions as unilateral aggression while omitting the specific Chinese trade and security practices that triggered them. The piece is advocacy dressed as analysis.",
         "dimensions": [
@@ -239,6 +246,7 @@ PRAMAANA_SEED = [
         "article_title": "Does Russia have a point about NATO expansion?",
         "source_url": "https://www.rt.com/russia/547775-west-europe-nato-expansion/",
         "outlet": "RT (Russia Today)",
+        "region": "global",
         "overall_score": 18,
         "verdict": "RT is Russia's state foreign broadcasting arm, and while this piece is authored by a credentialled international law professor — Alfred de Zayas — its publication on RT serves a clear function: lending academic legitimacy to Russian state talking points on NATO expansion as provocation. The Kennan quote and 'assurances' argument have real scholarly debate around them, but the piece presents the most Russia-favourable version of contested history as settled fact, and was published weeks before the 2022 invasion as part of a coordinated information operation.",
         "dimensions": [
