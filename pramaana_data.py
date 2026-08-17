@@ -415,6 +415,42 @@ PRAMAANA_SEED = [
         ],
     },
 
+    # ── Right-of-centre Indian outlet ────────────────────────────────────────
+    {
+        "article_title": "Inside India's Air Defence Network That Stood Tall During Operation Sindoor",
+        "source_url": "https://swarajyamag.com/defence/inside-indias-air-defence-network-that-stood-tall-during-operation-sindoor",
+        "outlet": "Swarajya",
+        "region": "india",
+        "overall_score": 53,
+        "verdict": "Prakhar Gupta's Swarajya piece is technically detailed and largely accurate on India's air defence systems — S-400, MRSAM, Akash, and the integrated command network. The military hardware described is real and verifiable. The editorial problem is one-directionality: the piece frames Operation Sindoor's air defence performance as an unqualified success, without engaging Pakistani claims of drone interceptions or independent assessments of system effectiveness. The headline framing ('Stood Tall') is advocacy; the technical content underneath is genuinely informative.",
+        "dimensions": [
+            {"name": "Source trust", "score": 58, "note": "Swarajya is independent but explicitly right-of-centre with pro-establishment defence editorial stance"},
+            {"name": "Claim verifiability", "score": 62, "note": "Air defence system specifications are publicly documented and verifiable"},
+            {"name": "Cross-source consensus", "score": 50, "note": "Technical facts broadly corroborated; operational success claims not independently verified"},
+            {"name": "Narrative transparency", "score": 55, "note": "Swarajya's editorial lean is known; framing celebratory but not concealed"},
+            {"name": "Contextual completeness", "score": 42, "note": "Pakistani drone penetration claims and independent battle damage assessments absent"},
+        ],
+        "source_funding": "Swarajya is an independent Indian media outlet with an explicitly right-of-centre, nationalist editorial identity. It is funded through subscriptions and reader support, with no direct government or corporate conglomerate funding. Founded in 1956, revived in 2014, it positions itself as a counterweight to left-liberal Indian media. Authors publish under their own bylines with editorial oversight.",
+        "claims": [
+            {"type": "fact", "text": "India deployed the S-400 Triumf (Sudarshan Chakra), MRSAM, and Akash systems during Operation Sindoor"},
+            {"type": "fact", "text": "Pakistan fired drones and missiles at Indian military installations during the operation"},
+            {"type": "contested", "text": "India's integrated air defence network neutralised all Pakistani aerial threats without any successful penetration"},
+            {"type": "opinion", "text": "Operation Sindoor demonstrated India's emergence as a mature military power with credible multi-layered air defence"},
+        ],
+        "cross_source": [
+            {"outlet": "The Hindu", "stance": "partial", "note": "Confirms air defence deployment; more cautious on 'zero penetration' claims"},
+            {"outlet": "Reuters", "stance": "partial", "note": "Reports air defence activation; notes independent verification of outcomes is not possible"},
+            {"outlet": "ISPR (Pakistan)", "stance": "diverge", "note": "Claims Pakistani drones successfully struck Indian military sites in Jammu and Pathankot"},
+            {"outlet": "War on the Rocks", "stance": "partial", "note": "Notes India's air defence credibility was tested and generally held; cautious on total success claims"},
+        ],
+        "narrative_beneficiary": "The Indian defence establishment and BJP government benefit from a narrative of technological self-reliance and military competence. Swarajya's readership — nationalist, defence-interested, pro-India — receives the operation as validation of the Modi government's defence modernisation programme. The framing supports the political case for continued defence capital expenditure.",
+        "missing_context": [
+            "Pakistan's ISPR claimed drone strikes successfully reached Indian military airbases at Jammu and Pathankot — Swarajya does not engage with these counter-claims",
+            "Independent battle damage assessment of Indian air defence performance has not been published by any neutral third-party military analyst",
+            "The S-400's actual engagement record during Sindoor remains classified — the piece presents system specifications as proof of operational success, which is a logical gap",
+        ],
+    },
+
     # ── Government source ────────────────────────────────────────────────────
     {
         "article_title": "Operation SINDOOR — Official Government Position",
