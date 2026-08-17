@@ -420,7 +420,7 @@ PRAMAANA_SEED = [
         "article_title": "Operation SINDOOR — Official Government Position",
         "source_url": "https://www.mea.gov.in/operation-sindoor",
         "outlet": "Ministry of External Affairs, India",
-        "region": "india",
+        "region": "official",
         "overall_score": 36,
         "verdict": "The MEA's Operation Sindoor page is official government communication — transparent in its source but inherently one-sided by function. The factual claims about the Pahalgam attack and the names of terror organisations struck are largely verifiable against independent sources. However, the framing exclusively presents the Indian government's narrative: civilian harm is dismissed, casualty figures are presented from the Indian military's perspective only, and the diplomatic and humanitarian dimensions are absent. This is government communication functioning exactly as intended — advocacy, not journalism.",
         "dimensions": [
