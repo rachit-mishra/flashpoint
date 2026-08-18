@@ -211,14 +211,17 @@
     .leaderboard-title { font-family: var(--font-d); font-size: 18px; font-weight: 600; }
     .leaderboard-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
     .lb-table { display: flex; flex-direction: column; gap: 6px; }
+    .lb-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .lb-card:hover { border-color: var(--border-hover); }
     .lb-row {
       display: grid; grid-template-columns: 28px 1fr auto auto;
       align-items: center; gap: 12px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 12px 16px;
-      transition: border-color 0.15s;
+      padding: 12px 16px; cursor: pointer;
     }
-    .lb-row:hover { border-color: var(--border-hover); }
     .lb-rank { font-family: var(--font-m); font-size: 10px; color: var(--text-3); text-align: center; }
     .lb-outlet { font-size: 13px; font-weight: 500; color: var(--text-1); }
     .lb-articles { font-family: var(--font-m); font-size: 9px; color: var(--text-3);
@@ -227,6 +230,23 @@
     .lb-score { font-family: var(--font-m); font-size: 15px; font-weight: 700; text-align: right; min-width: 36px; }
     .lb-bar-wrap { grid-column: 1 / -1; height: 2px; background: var(--surface-3); border-radius: 2px; margin-top: -4px; }
     .lb-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .lb-dims {
+      display: none; padding: 0 16px 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .lb-dims.open { display: block; }
+    .lb-dim-row {
+      display: grid; grid-template-columns: 1fr 32px;
+      align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+    }
+    .lb-dim-row:last-child { border-bottom: none; }
+    .lb-dim-left { display: flex; flex-direction: column; gap: 4px; }
+    .lb-dim-name { font-size: 10px; color: var(--text-2); letter-spacing: 0.04em; }
+    .lb-dim-bar-wrap { height: 3px; background: var(--surface-3); border-radius: 2px; }
+    .lb-dim-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+    .lb-dim-score { font-family: var(--font-m); font-size: 11px; font-weight: 700; text-align: right; }
 
     /* ── Share buttons ───────────────────────────────────────────────────── */
     .share-row { display: flex; justify-content: flex-end; padding-top: 4px; }
@@ -614,13 +634,25 @@ fetch('/api/pramaana/leaderboard')
     if (!data.length) { table.parentElement.style.display = 'none'; return; }
     table.innerHTML = data.map((d, i) => {
       const clr = scoreColor(d.avg_score);
-      const pct = d.avg_score;
-      return `<div class="lb-row">
-        <div class="lb-rank">${i + 1}</div>
-        <div class="lb-outlet">${d.outlet}</div>
-        <div class="lb-articles">${d.articles} article${d.articles !== 1 ? 's' : ''}</div>
-        <div class="lb-score" style="color:${clr};">${d.avg_score}</div>
-        <div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%;background:${clr};"></div></div>
+      const dimRows = (d.dimensions || []).map(dim => {
+        const dc = scoreColor(dim.avg);
+        return `<div class="lb-dim-row">
+          <div class="lb-dim-left">
+            <div class="lb-dim-name">${dim.name}</div>
+            <div class="lb-dim-bar-wrap"><div class="lb-dim-bar" style="width:${dim.avg}%;background:${dc};"></div></div>
+          </div>
+          <div class="lb-dim-score" style="color:${dc};">${dim.avg}</div>
+        </div>`;
+      }).join('');
+      return `<div class="lb-card">
+        <div class="lb-row" onclick="this.closest('.lb-card').querySelector('.lb-dims').classList.toggle('open')">
+          <div class="lb-rank">${i + 1}</div>
+          <div class="lb-outlet">${d.outlet}</div>
+          <div class="lb-articles">${d.articles} article${d.articles !== 1 ? 's' : ''}</div>
+          <div class="lb-score" style="color:${clr};">${d.avg_score}</div>
+          <div class="lb-bar-wrap"><div class="lb-bar" style="width:${d.avg_score}%;background:${clr};"></div></div>
+        </div>
+        ${dimRows ? `<div class="lb-dims">${dimRows}</div>` : ''}
       </div>`;
     }).join('');
   })

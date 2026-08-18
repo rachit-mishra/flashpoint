@@ -1754,14 +1754,31 @@ async def pramaana_leaderboard():
             if not isinstance(score, (int, float)):
                 continue
             if outlet not in outlet_map:
-                outlet_map[outlet] = []
-            outlet_map[outlet].append(int(score))
+                outlet_map[outlet] = {"scores": [], "dims": {}}
+            outlet_map[outlet]["scores"].append(int(score))
+            for dim in (r.get("dimensions") or []):
+                name = dim.get("name", "").strip()
+                ds   = dim.get("score")
+                if name and isinstance(ds, (int, float)):
+                    outlet_map[outlet]["dims"].setdefault(name, []).append(int(ds))
         result = []
-        for outlet, scores in outlet_map.items():
+        for outlet, data in outlet_map.items():
+            scores = data["scores"]
+            dims   = [
+                {"name": n, "avg": round(sum(v) / len(v))}
+                for n, v in data["dims"].items()
+            ]
+            dims.sort(key=lambda x: ["Source trust", "Claim verifiability",
+                                     "Cross-source consensus", "Narrative transparency",
+                                     "Contextual completeness"].index(x["name"])
+                      if x["name"] in ["Source trust", "Claim verifiability",
+                                        "Cross-source consensus", "Narrative transparency",
+                                        "Contextual completeness"] else 99)
             result.append({
-                "outlet":    outlet,
-                "avg_score": round(sum(scores) / len(scores)),
-                "articles":  len(scores),
+                "outlet":     outlet,
+                "avg_score":  round(sum(scores) / len(scores)),
+                "articles":   len(scores),
+                "dimensions": dims,
             })
         result.sort(key=lambda x: x["avg_score"], reverse=True)
         return result
